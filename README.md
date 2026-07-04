@@ -36,13 +36,15 @@
         ├── SKILL.en.md        # 英文镜像
         ├── TESTPLAN.md / .en.md
         └── references/
-            ├── chat-analysis.md / .en.md     # 聊天记录分析方法论
-            ├── knowledge-base.md / .en.md    # 完整两性知识库
-            ├── lifecycle.md / .en.md         # 全周期路线图
-            ├── profile-template.md / .en.md  # 对象情况记录模板
-            ├── signal-patterns.md            # 🆕 信号识别增强库
-            ├── damage-control.md             # 🆕 智能止损系统
-            └── self-diagnosis.md             # 🆕 自我诊断工具
+            ├── chat-analysis.md / .en.md       # 聊天记录分析方法论
+            ├── knowledge-base.md / .en.md      # 完整两性知识库
+            ├── lifecycle.md / .en.md           # 全周期路线图
+            ├── profile-template.md / .en.md    # 对象情况记录模板
+            ├── signal-patterns.md              # 🆕 信号识别增强库
+            ├── damage-control.md               # 🆕 智能止损系统
+            ├── self-diagnosis.md               # 🆕 自我诊断工具
+            ├── realistic-scenarios.md          # 🆕 真实场景应对（失败/尴尬处理）
+            └── hard-value-reality.md           # 🆕 硬价值评估（外貌/经济/地位）
 ```
 
 实际运行的技能以中文 `SKILL.md` 为准；`.en.md` 是面向非中文读者的忠实英文参考。
@@ -67,6 +69,8 @@
 | 🎯 **信号识别增强** | 精准区分兴趣/礼貌/废测/拒绝，避免"把礼貌当兴趣""把废测当拒绝" |
 | 🛑 **智能止损系统** | 分级止损模型+量化评估表，知道什么时候该放弃比知道怎么追更重要 |
 | 🔍 **自我诊断工具** | 形象评分(0-100)/聊天习惯测试/问题定位，精准找到你的短板 |
+| 💔 **真实场景应对** | 表白被拒/约会冷场/被发好人卡等尴尬情况的体面处理方案 |
+| 📏 **硬价值评估** | 坦诚评估外貌/经济/社会地位，明白能追什么段位的人，话术不能逆天改命 |
 | 📊 **阶段诊断** | 帮你定位目前走到哪一步（吸引/平淡/暧昧/恋爱），给出下一步动作 |
 | 📚 **知识问答** | 约会去哪、穿搭建议、如何搭讪、废测应对等具体问题 |
 | 📝 **对象记录** | 用代号建档案，跨会话跟踪每个人的阶段、兴趣变化、时间线 |
@@ -113,13 +117,15 @@ A complete, reusable **`dating-coach` skill**, including:
         ├── SKILL.en.md        # English mirror
         ├── TESTPLAN.md / .en.md
         └── references/
-            ├── chat-analysis.md / .en.md     # Chat-log analysis methodology
-            ├── knowledge-base.md / .en.md    # Full knowledge base
-            ├── lifecycle.md / .en.md         # Full-lifecycle roadmap
-            ├── profile-template.md / .en.md  # Prospect dossier template
-            ├── signal-patterns.md            # 🆕 Signal recognition toolkit
-            ├── damage-control.md             # 🆕 Smart exit strategy system
-            └── self-diagnosis.md             # 🆕 Self-assessment tools
+            ├── chat-analysis.md / .en.md       # Chat-log analysis methodology
+            ├── knowledge-base.md / .en.md      # Full knowledge base
+            ├── lifecycle.md / .en.md           # Full-lifecycle roadmap
+            ├── profile-template.md / .en.md    # Prospect dossier template
+            ├── signal-patterns.md              # 🆕 Signal recognition toolkit
+            ├── damage-control.md               # 🆕 Smart exit strategy system
+            ├── self-diagnosis.md               # 🆕 Self-assessment tools
+            ├── realistic-scenarios.md          # 🆕 Real-world scenario handling (rejection/awkwardness)
+            └── hard-value-reality.md           # 🆕 Hard-value reality check (looks/income/status)
 ```
 
 The live skill runs from the Chinese `SKILL.md`; the `.en.md` files are faithful English references for non-Chinese readers.
@@ -144,6 +150,8 @@ Copy `.claude/skills/dating-coach/` into your assistant's skills directory and a
 | 🎯 **Signal recognition** | Precisely distinguish interest/politeness/shit-tests/rejection, avoid "mistaking courtesy for attraction" |
 | 🛑 **Smart exit strategy** | Tiered damage-control model + quantified assessment, knowing when to quit is more important than knowing how to chase |
 | 🔍 **Self-assessment** | Image scoring (0-100) / chat habit test / problem diagnosis, pinpoint your weak spots |
+| 💔 **Real scenario handling** | Graceful ways to handle rejection, awkward dates, and being friend-zoned |
+| 📏 **Hard-value reality check** | Honest assessment of looks/income/status; understand your dating league, tricks can't defy gravity |
 | 📊 **Stage diagnosis** | Pinpoints where you are (Attraction / Plateau / Flirtation / Relationship) and the next move |
 | 📚 **Knowledge Q&A** | Concrete questions: where to take a date, what to wear, how to open, how to handle a shit test |
 | 📝 **Prospect profiles** | Codename-based dossiers tracking each person's stage, interest shifts, and timeline across sessions |
