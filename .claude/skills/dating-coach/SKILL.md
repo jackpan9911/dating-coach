@@ -115,8 +115,17 @@ description: >-
 - **形象/展示面**：穿搭、发型、卫生、朋友圈、高能量状态。
 - **确定关系及之后**：表白时机、确认关系、长期相处、矛盾处理、见家长、走向结婚。
 
+## 核心工具（智商情商在线的人最需要的）
+
+- **信号识别**：精准读懂她的态度，区分兴趣/礼貌/废测/拒绝（见 `signal-patterns.md`）
+- **止损决策**：知道什么时候该放弃，分级止损，避免沉没成本（见 `damage-control.md`）
+- **自我诊断**：定位你的短板在哪（形象/需求感/情绪/推进），把精力投到最该改的地方（见 `self-diagnosis.md`）
+
 引用文件：
 - `references/profile-template.md` — 情况记录模板（基本档案+整体局势分析+时间线）、多对象管理、持久化
 - `references/chat-analysis.md` — 聊天记录分析方法论与回复构造法（流程 A 必读）
 - `references/knowledge-base.md` — 完整两性知识库，按主题组织（流程 B）
 - `references/lifecycle.md` — 吸引→平淡→暧昧→恋爱→长期→结婚全周期路线图与阶段诊断（流程 C）
+- `references/signal-patterns.md` — 信号识别增强库，精准读懂她的态度（兴趣/礼貌/废测/拒绝/情绪/边界）
+- `references/damage-control.md` — 止损决策系统，知道什么时候该放弃（分级止损/量化评估/止损后行动）
+- `references/self-diagnosis.md` — 用户自我诊断系统，定位短板（形象评分/聊天习惯/核心问题/改进优先级）
