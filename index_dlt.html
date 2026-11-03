@@ -1,0 +1,3241 @@
+<!--
+大乐透模拟器 - 专业版
+-->
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="大乐透">
+    <meta name="theme-color" content="#0a0a1a">
+    <meta name="color-scheme" content="dark">
+    <meta name="format-detection" content="telephone=no, email=no, address=no">
+    <title>大乐透模拟器 Pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html {
+            /* 关闭 iOS 横屏/字号设置导致的文字自动放大 */
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+            color-scheme: dark;
+        }
+        
+        :root {
+            --gold: #ffd700;
+            --gold-dark: #b8860b;
+            --red: #e74c3c;
+            --blue: #3498db;
+            --teal: #1abc9c;
+            --dark: #0a0a1a;
+            --card-bg: rgba(20, 25, 45, 0.95);
+            --border: rgba(255, 255, 255, 0.08);
+        }
+        
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Segoe UI', sans-serif;
+            background: var(--dark);
+            min-height: 100vh;
+            min-height: 100dvh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        
+        /* 表单控件继承系统字体，避免 iOS 回退到默认 UI 字体 */
+        input, select, textarea, button {
+            font-family: inherit;
+        }
+        
+        /* 动态背景 */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(255, 215, 0, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(231, 76, 60, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(52, 152, 219, 0.04) 0%, transparent 60%);
+            animation: bgFloat 20s ease-in-out infinite;
+        }
+        @keyframes bgFloat {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(2%, 2%) rotate(1deg); }
+            66% { transform: translate(-1%, 1%) rotate(-1deg); }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        /* 头部 */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .logo {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffd700 0%, #ff8c00 50%, #ffd700 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 60px rgba(255, 215, 0, 0.5);
+            letter-spacing: 4px;
+        }
+        /* iOS 下渐变文字会把 emoji 一起“透明化”，单独还原 */
+        .logo-emoji {
+            background: none;
+            -webkit-background-clip: initial;
+            background-clip: initial;
+            -webkit-text-fill-color: initial;
+            text-shadow: none;
+        }
+        .tagline {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1rem;
+            margin-top: 8px;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+        }
+        
+        /* 卡片 */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px;
+            margin-bottom: 24px;
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+        .card-icon.gold { background: linear-gradient(135deg, #ffd700, #ff8c00); }
+        .card-icon.red { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .card-icon.blue { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .card-icon.teal { background: linear-gradient(135deg, #1abc9c, #16a085); }
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        .card-subtitle {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        /* 模拟区 */
+        .sim-area {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .input-label {
+            display: block;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 8px;
+        }
+        .sim-input {
+            width: 100%;
+            padding: 16px 24px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .sim-input:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+        }
+        
+        /* 按钮 */
+        .btn {
+            padding: 16px 32px;
+            border: none;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
+        }
+        .btn-gold {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #000;
+            box-shadow: 0 8px 30px rgba(255, 215, 0, 0.4);
+        }
+        .btn-gold:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(255, 215, 0, 0.5);
+        }
+        .btn-gold:active {
+            transform: translateY(0);
+        }
+        .btn-gold:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-outline {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(231, 76, 60, 0.4);
+        }
+        
+        /* 进度条 */
+        .progress-wrap {
+            margin-top: 24px;
+            display: none;
+        }
+        .progress-wrap.show { display: block; }
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold), #ff8c00);
+            border-radius: 4px;
+            transition: width 0.1s;
+            width: 0%;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .sim-info {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 1.1rem;
+            color: var(--gold);
+        }
+        
+        /* 开奖输入区 */
+        .draw-section {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 140, 0, 0.05));
+            border: 2px solid rgba(255, 215, 0, 0.2);
+            border-radius: 20px;
+            padding: 28px;
+        }
+        .draw-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .draw-label {
+            min-width: 80px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gold);
+        }
+        .draw-inputs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .draw-input {
+            width: 56px;
+            height: 56px;
+            border: 2px solid rgba(231, 76, 60, 0.6);
+            border-radius: 50%;
+            background: rgba(231, 76, 60, 0.1);
+            color: #fff;
+            font-size: 1.4rem;
+            font-weight: 700;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .draw-input.back-input {
+            border-color: rgba(52, 152, 219, 0.6);
+            background: rgba(52, 152, 219, 0.1);
+        }
+        .draw-input:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            transform: scale(1.1);
+        }
+        .draw-input:not(:placeholder-shown) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .draw-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+        
+        /* 统计面板 */
+        .stats-panel {
+            display: none;
+            margin-top: 28px;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(26, 188, 156, 0.08));
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 20px;
+            animation: fadeInUp 0.5s ease;
+        }
+        .stats-panel.show { display: block; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stats-title {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 20px;
+        }
+        
+        /* 统计分区 */
+        .stats-section {
+            margin-bottom: 20px;
+        }
+        .stats-section:last-child {
+            margin-bottom: 0;
+        }
+        .stats-section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            flex-wrap: wrap;
+        }
+        .stats-section-title.current {
+            color: var(--gold);
+            border-bottom-color: rgba(255, 215, 0, 0.3);
+        }
+        .stats-section-title.total {
+            color: var(--teal);
+            border-bottom-color: rgba(26, 188, 156, 0.3);
+        }
+        .stats-section-title .badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-current {
+            background: rgba(255, 215, 0, 0.2);
+            color: var(--gold);
+        }
+        .badge-total {
+            background: rgba(26, 188, 156, 0.2);
+            color: var(--teal);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+        }
+        .stat-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 14px;
+            padding: 16px 12px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .stat-box:hover {
+            transform: translateY(-4px);
+            background: rgba(0, 0, 0, 0.4);
+        }
+        .stat-box.current {
+            border-left: 3px solid var(--gold);
+        }
+        .stat-box.total {
+            border-left: 3px solid var(--teal);
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 6px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.2;
+        }
+        .stat-value.highlight { color: var(--teal); }
+        .stat-value.win { color: var(--gold); }
+        .stat-value.lose { color: var(--red); }
+        
+        /* 具象化解读 - 简洁版 */
+        .insight-section {
+            margin-top: 16px;
+        }
+        .stats-section-title.insight {
+            color: #ff9f43;
+            border-bottom-color: rgba(255, 159, 67, 0.3);
+        }
+        .badge-insight {
+            background: rgba(255, 159, 67, 0.2);
+            color: #ff9f43;
+        }
+        .insight-content {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 14px;
+            padding: 16px;
+        }
+        .insight-main {
+            text-align: center;
+        }
+        .insight-kpi {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .kpi-item {
+            text-align: center;
+            min-width: 60px;
+        }
+        .kpi-label {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 4px;
+        }
+        .kpi-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.2;
+        }
+        .kpi-value.win { color: var(--gold); }
+        .kpi-value.lose { color: var(--red); }
+        .insight-desc {
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+        }
+        .lose-text { color: var(--red); font-weight: 600; }
+        .win-text { color: var(--gold); font-weight: 600; }
+        .neutral-text { color: rgba(255, 255, 255, 0.6); }
+        .insight-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+        .insight-tag {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .insight-tag.gold { background: rgba(255, 215, 0, 0.2); color: var(--gold); }
+        .insight-tag.silver { background: rgba(192, 192, 192, 0.2); color: #c0c0c0; }
+        .insight-tag.bronze { background: rgba(205, 127, 50, 0.2); color: #cd7f32; }
+        .insight-tag.normal { background: rgba(26, 188, 156, 0.15); color: var(--teal); }
+        .insight-summary {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+        }
+        
+        /* 奖级明细 */
+        .prize-table {
+            width: 100%;
+            margin-top: 24px;
+            border-collapse: collapse;
+        }
+        .prize-table th {
+            padding: 12px;
+            background: rgba(255, 215, 0, 0.1);
+            color: var(--gold);
+            font-weight: 600;
+            text-align: center;
+            border-radius: 8px;
+        }
+        .prize-table td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .prize-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .prize-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+        .prize-badge.p1 { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; box-shadow: 0 2px 10px rgba(255, 215, 0, 0.3); }
+        .prize-badge.p2 { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: #000; box-shadow: 0 2px 10px rgba(192, 192, 192, 0.3); }
+        .prize-badge.p3 { background: linear-gradient(135deg, #cd7f32, #b8722d); color: #fff; }
+        .prize-badge.p4 { background: var(--teal); color: #fff; }
+        .prize-badge.p5 { background: #9b59b6; color: #fff; }
+        .prize-badge.p6 { background: #e91e63; color: #fff; }
+        .prize-badge.p7 { background: #3498db; color: #fff; }
+        .prize-badge.p8 { background: #607d8b; color: #fff; }
+        .prize-badge.p9 { background: #795548; color: #fff; }
+        .prize-badge.none { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.5); }
+        
+        /* 奖级明细 - 卡片式 */
+        .prize-levels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .prize-level-item {
+            padding: 12px 10px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .prize-level-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            gap: 6px;
+        }
+        .prize-level-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+        .prize-level-count {
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .prize-level-amount {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 4px;
+        }
+        .prize-level-total {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .prize-level-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 16px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.85rem;
+        }
+        .prize-level-item.no-prize {
+            background: rgba(255,255,255,0.05);
+            border-left: 3px solid rgba(255,255,255,0.2);
+        }
+        .prize-level-item.no-prize .prize-level-count {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        /* 累计汇总 */
+        .total-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .total-stat {
+            text-align: center;
+            padding: 12px 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        .total-label {
+            display: block;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 6px;
+        }
+        .total-value {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .total-value.win { color: var(--gold); }
+        .total-value.lose { color: var(--red); }
+        
+        @media (max-width: 600px) {
+            .prize-levels-grid { grid-template-columns: repeat(2, 1fr); }
+            .total-summary { grid-template-columns: 1fr; }
+        }
+        
+        /* 中奖统计条 */
+        .win-stats-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            flex-wrap: wrap;
+        }
+        .win-stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 50px;
+        }
+        .win-stat-count {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        .win-stat-label {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 2px;
+        }
+        
+        /* 历史核对 */
+        .history-match {
+            margin-top: 24px;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(26, 188, 156, 0.15), rgba(52, 152, 219, 0.1));
+            border: 2px solid rgba(26, 188, 156, 0.3);
+            border-radius: 16px;
+            display: none;
+        }
+        .history-match.show { display: block; animation: fadeInUp 0.5s ease; }
+        .match-title {
+            color: var(--teal);
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .match-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .match-period {
+            color: var(--gold);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .no-match {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* 号码球 */
+        .ball {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin: 0 3px;
+        }
+        .ball.front { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .ball.back { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .ball.matched {
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+            border: 2px solid var(--gold);
+        }
+        
+        /* 历史记录表格 */
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .filter-select {
+            padding: 12px 42px 12px 18px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.03);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffd700' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 16px 16px;
+            color: #fff;
+            font-size: 0.95rem;
+            cursor: pointer;
+            outline: none;
+            min-width: 140px;
+            min-height: 44px;
+        }
+        .filter-select:focus { border-color: var(--gold); }
+        .filter-select option { background: #1a1a2e; }
+        .filter-input {
+            padding: 12px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            color: #fff;
+            font-size: 0.9rem;
+            width: 130px;
+            outline: none;
+        }
+        .filter-input:focus { border-color: var(--gold); }
+        .filter-input::placeholder { color: rgba(255, 255, 255, 0.3); }
+        .filter-info {
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .export-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .pagination {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+        }
+        .pagination.show { display: flex; }
+        .page-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .page-btn:hover:not(:disabled) {
+            background: rgba(255,215,0,0.2);
+            border-color: var(--gold);
+        }
+        .page-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .page-info {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
+        }
+        .page-info strong {
+            color: var(--gold);
+        }
+        
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+            border-radius: 16px;
+            display: none;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+        .table-wrap.show { display: block; }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            min-width: 900px;
+        }
+        .history-table th {
+            position: sticky;
+            top: 0;
+            background: rgba(20, 25, 45, 0.98);
+            padding: 14px 10px;
+            color: var(--gold);
+            font-weight: 600;
+            text-align: center;
+            border-bottom: 2px solid rgba(255, 215, 0, 0.2);
+            white-space: nowrap;
+        }
+        .history-table td {
+            padding: 12px 10px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .history-table tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        
+        /* 一二等奖特色 */
+        .row-p1 {
+            background: linear-gradient(90deg, rgba(255, 215, 0, 0.3), rgba(255, 140, 0, 0.2), rgba(255, 215, 0, 0.3)) !important;
+            animation: p1Glow 2s ease-in-out infinite;
+        }
+        @keyframes p1Glow {
+            0%, 100% { box-shadow: inset 0 0 30px rgba(255, 215, 0, 0.3); }
+            50% { box-shadow: inset 0 0 60px rgba(255, 215, 0, 0.5); }
+        }
+        .row-p2 {
+            background: linear-gradient(90deg, rgba(192, 192, 192, 0.25), rgba(160, 160, 160, 0.15), rgba(192, 192, 192, 0.25)) !important;
+            animation: p2Glow 2s ease-in-out infinite;
+        }
+        @keyframes p2Glow {
+            0%, 100% { box-shadow: inset 0 0 25px rgba(192, 192, 192, 0.2); }
+            50% { box-shadow: inset 0 0 45px rgba(192, 192, 192, 0.35); }
+        }
+        .row-p3 {
+            background: linear-gradient(90deg, rgba(205, 127, 50, 0.15), rgba(184, 114, 45, 0.1), rgba(205, 127, 50, 0.15)) !important;
+        }
+        .row-p4 {
+            background: rgba(26, 188, 156, 0.08) !important;
+        }
+        .row-p5, .row-p6 {
+            background: rgba(155, 89, 182, 0.08) !important;
+        }
+        .id-highlight {
+            color: var(--gold) !important;
+            font-weight: 800 !important;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+        }
+        .id-silver {
+            color: #c0c0c0 !important;
+            font-weight: 700 !important;
+            text-shadow: 0 0 8px rgba(192, 192, 192, 0.6);
+        }
+        .id-bronze {
+            color: #cd7f32 !important;
+            font-weight: 700 !important;
+        }
+        .prize-cell {
+            position: relative;
+            font-weight: 600;
+        }
+        .prize-cell.win::before {
+            content: '🏆 ';
+        }
+        .prize-cell.silver::before {
+            content: '🥈 ';
+        }
+        .prize-cell.bronze::before {
+            content: '🥉 ';
+        }
+        .badge-pulse {
+            animation: badgePulse 1.5s ease-in-out infinite;
+        }
+        @keyframes badgePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        .prize-amount {
+            font-weight: 700;
+            color: var(--gold);
+        }
+        .prize-amount.high {
+            font-size: 1.1em;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .mini-ball {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin: 0 2px;
+        }
+        .mini-ball.front { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .mini-ball.back { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .mini-ball.matched {
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            border: 2px solid var(--gold);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+        .pending-status {
+            color: var(--gold);
+            font-size: 0.85rem;
+        }
+        
+        /* 上传区 */
+        .upload-zone {
+            border: 2px dashed rgba(255, 215, 0, 0.3);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-zone:hover {
+            border-color: var(--gold);
+            background: rgba(255, 215, 0, 0.05);
+        }
+        .upload-zone.dragover {
+            border-color: var(--gold);
+            background: rgba(255, 215, 0, 0.1);
+        }
+        .upload-icon { font-size: 3rem; margin-bottom: 12px; }
+        .upload-text { color: rgba(255, 255, 255, 0.6); margin-bottom: 8px; }
+        .upload-hint { font-size: 0.85rem; color: rgba(255, 255, 255, 0.3); }
+        .file-input { display: none; }
+        
+        .jackpot-list {
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 20px;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+        .jackpot-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px;
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+        .jackpot-period {
+            color: var(--gold);
+            font-weight: 700;
+        }
+        .jackpot-balls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .jackpot-ball {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .jackpot-ball.front { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .jackpot-ball.back { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .jackpot-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .jackpot-count { color: rgba(255, 255, 255, 0.5); }
+        .hidden { display: none !important; }
+        
+        /* ==================== iOS / iPhone 适配 ==================== */
+        
+        /* 安全区域：刘海 / 灵动岛 / 底部手势条 / 横屏圆角 */
+        @supports (padding: max(0px)) {
+            .container {
+                padding-top: max(30px, env(safe-area-inset-top));
+                padding-left: max(20px, env(safe-area-inset-left));
+                padding-right: max(20px, env(safe-area-inset-right));
+                padding-bottom: max(30px, env(safe-area-inset-bottom));
+            }
+        }
+        
+        /* iOS 抗锯齿和字体平滑 */
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        
+        /* 禁用 iOS 触摸高亮、长按弹窗 */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        button, .btn, .page-btn, .draw-label, .badge, .prize-badge, .insight-tag {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        /* iOS 输入框优化 */
+        input, select, textarea {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            /*
+             * 关键：iOS Safari 在聚焦 font-size < 16px 的输入框时会自动放大整页，
+             * 因此移动端所有可输入控件的字号都不会小于 16px（见下方媒体查询）。
+             */
+        }
+        
+        /* iOS number 输入框隐藏微调按钮 */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        
+        /* iOS 表单聚焦样式 */
+        input:focus, select:focus {
+            -webkit-appearance: none;
+            outline: none;
+        }
+        
+        /* iOS 按钮样式优化 */
+        button {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            touch-action: manipulation;
+            cursor: pointer;
+        }
+        
+        /* 触摸反馈（触屏上 hover 会残留，见下方 @media (hover: none)） */
+        button:active {
+            opacity: 0.85;
+        }
+        
+        /* 触屏设备：清除点击后残留的 hover 效果 */
+        @media (hover: none) {
+            .btn-gold:hover {
+                transform: none;
+                box-shadow: 0 8px 30px rgba(255, 215, 0, 0.4);
+            }
+            .btn-danger:hover {
+                transform: none;
+                box-shadow: none;
+            }
+            .btn-outline:hover {
+                background: transparent;
+                border-color: rgba(255, 255, 255, 0.2);
+            }
+            .stat-box:hover {
+                transform: none;
+                background: rgba(0, 0, 0, 0.3);
+            }
+            .page-btn:hover:not(:disabled) {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+            .upload-zone:hover {
+                border-color: rgba(255, 215, 0, 0.3);
+                background: transparent;
+            }
+            .prize-table tr:hover td,
+            .history-table tr:hover td {
+                background: transparent;
+            }
+        }
+        
+        /* 尊重“减弱动态效果”系统设置 */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+            .bg-animation::before { animation: none; }
+        }
+        
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .logo { font-size: 2.2rem; letter-spacing: 2px; }
+            .tagline { letter-spacing: 4px; font-size: 0.85rem; }
+            
+            .card { 
+                padding: 20px; 
+                margin-bottom: 16px;
+                border-radius: 20px;
+            }
+            
+            .card-header { margin-bottom: 20px; padding-bottom: 14px; }
+            .card-icon { width: 36px; height: 36px; font-size: 1.2rem; }
+            .card-title { font-size: 1.1rem; }
+            
+            /* 模拟区移动端布局：输入框占整行，两个按钮并排 */
+            .sim-area {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .sim-area .input-group { grid-column: 1 / -1; }
+            .input-group { width: 100%; min-width: unset; }
+            .sim-input {
+                padding: 16px;
+                font-size: 1.1rem;
+            }
+            .sim-info { font-size: 1rem; }
+            
+            /* 按钮移动端优化 */
+            .btn {
+                width: 100%;
+                min-height: 48px;
+                padding: 14px 20px;
+                font-size: 1rem;
+                border-radius: 14px;
+                justify-content: center;
+            }
+            
+            /* 开奖输入区优化 */
+            .draw-section {
+                padding: 20px;
+                border-radius: 16px;
+            }
+            .draw-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+            .draw-label { min-width: auto; font-size: 0.95rem; }
+            /* 号码球按 5 列等分网格排列，任何宽度下都不挤压、不溢出 */
+            .draw-inputs {
+                width: 100%;
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                align-items: start;
+                gap: 8px;
+            }
+            .draw-input { 
+                width: 100%;
+                max-width: 56px;
+                height: auto;
+                min-height: 44px;
+                aspect-ratio: 1 / 1;
+                font-size: 1.3rem; 
+                padding: 0;
+            }
+            .draw-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            /* ========== 统计面板移动端全面适配 ========== */
+            .stats-panel {
+                padding: 16px;
+                margin-top: 20px;
+                border-radius: 16px;
+            }
+            .stats-title { 
+                font-size: 1.1rem; 
+                margin-bottom: 16px; 
+            }
+            .stats-section {
+                margin-bottom: 16px;
+                padding-bottom: 16px;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+            .stats-section:last-child {
+                margin-bottom: 0;
+                padding-bottom: 0;
+                border-bottom: none;
+            }
+            .stats-section-title {
+                font-size: 0.9rem;
+                margin-bottom: 10px;
+                padding-bottom: 8px;
+            }
+            .stats-section-title .badge {
+                padding: 2px 8px;
+                font-size: 0.7rem;
+            }
+            
+            /* 统计网格 - 移动端2列 */
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
+            }
+            .stat-box { 
+                padding: 12px 8px !important;
+                border-radius: 10px !important;
+            }
+            .stat-label {
+                font-size: 0.65rem !important;
+                margin-bottom: 4px !important;
+            }
+            .stat-value { 
+                font-size: 1.1rem !important;
+                line-height: 1.2;
+            }
+            
+            /* 具象化解读移动端 */
+            .insight-section {
+                margin-top: 12px;
+            }
+            .insight-content {
+                padding: 12px;
+                border-radius: 10px;
+            }
+            .insight-kpi {
+                gap: 12px;
+                margin-bottom: 10px;
+            }
+            .kpi-label { font-size: 0.6rem !important; }
+            .kpi-value { font-size: 1rem !important; }
+            .insight-summary { font-size: 0.75rem; }
+            .insight-tags { gap: 4px; }
+            .insight-tag {
+                font-size: 0.65rem;
+                padding: 2px 6px;
+            }
+            
+            /* 奖级明细移动端 - 更紧凑 */
+            .prize-levels-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
+                margin-top: 10px;
+            }
+            .prize-level-item {
+                padding: 10px 8px;
+                border-radius: 8px;
+            }
+            .prize-level-name { font-size: 0.75rem !important; }
+            .prize-level-count {
+                font-size: 0.65rem !important;
+                padding: 1px 6px;
+            }
+            .prize-level-amount { font-size: 0.6rem !important; }
+            .prize-level-total { font-size: 0.8rem !important; }
+            .prize-level-empty { 
+                padding: 12px; 
+                font-size: 0.8rem;
+            }
+            
+            /* 累计汇总移动端 - 3列保持 */
+            .total-summary {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                margin-top: 10px;
+            }
+            .total-stat {
+                padding: 10px 6px;
+                border-radius: 8px;
+            }
+            .total-label { 
+                font-size: 0.6rem !important;
+                margin-bottom: 4px;
+            }
+            .total-value { font-size: 0.85rem !important; }
+            
+            /* 奖级表格移动端 */
+            .prize-table { font-size: 0.75rem; }
+            .prize-table th, .prize-table td { padding: 6px 4px; }
+            .prize-badge { padding: 3px 8px; font-size: 0.65rem; }
+            
+            /* 中奖统计条移动端 */
+            .win-stats-bar { padding: 10px; gap: 6px; }
+            .win-stat-item { min-width: 36px; }
+            .win-stat-count { font-size: 0.9rem; }
+            .win-stat-label { font-size: 0.55rem; }
+            
+            /* 筛选栏移动端 */
+            .filter-bar { gap: 8px; flex-wrap: wrap; }
+            .filter-select, .filter-input {
+                /* 字号不小于 16px，否则 iOS 聚焦时会放大整个页面 */
+                font-size: 16px;
+                min-height: 44px;
+                min-width: 0;
+                flex: 1 1 40%;
+            }
+            .filter-select { padding: 10px 40px 10px 14px; }
+            .filter-input { padding: 10px 14px; }
+            .filter-bar .btn {
+                flex: 1 1 100%;
+                width: 100%;
+            }
+            .filter-info { 
+                width: 100%; 
+                text-align: center;
+                margin-top: 8px;
+                padding: 8px;
+                font-size: 0.8rem;
+            }
+            
+            /* 表格移动端 */
+            .table-wrap {
+                max-height: 60vh;
+                max-height: 60dvh;
+                border: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            .history-table { font-size: 0.75rem; min-width: 720px; }
+            .history-table th, .history-table td { padding: 8px 5px; }
+            .history-table td:last-child { font-size: 0.7rem; }
+            .mini-ball {
+                width: 20px;
+                height: 20px;
+                font-size: 0.6rem;
+                margin: 0 1px;
+            }
+            
+            /* 分页移动端 */
+            .pagination { gap: 8px; padding: 10px; flex-wrap: wrap; justify-content: center; }
+            .page-btn { min-height: 44px; padding: 10px 16px; font-size: 0.85rem; }
+            .page-info { font-size: 0.8rem; }
+            
+            /* 一等奖历史移动端 */
+            .upload-zone { padding: 24px 16px; }
+            .upload-icon { font-size: 2rem; }
+            .jackpot-item {
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+                padding: 10px;
+            }
+            .jackpot-controls {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            /* 导出按钮移动端 */
+            .export-btns { flex-direction: column; }
+        }
+        
+        /* iPhone 6/7/8、SE 等小屏（≤375） - 更紧凑 */
+        @media (max-width: 375px) {
+            .container {
+                padding-top: max(16px, env(safe-area-inset-top));
+                padding-left: max(12px, env(safe-area-inset-left));
+                padding-right: max(12px, env(safe-area-inset-right));
+                padding-bottom: max(24px, env(safe-area-inset-bottom));
+            }
+            .logo { font-size: 1.6rem; }
+            .card { padding: 14px; border-radius: 14px; }
+            .draw-input { 
+                font-size: 1.05rem;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 6px !important;
+            }
+            .stat-box { padding: 10px 6px !important; }
+            .stat-value { font-size: 1rem !important; }
+            .stat-label { font-size: 0.6rem !important; }
+            
+            .prize-levels-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+            .prize-level-item { padding: 8px 6px; }
+            .prize-level-name { font-size: 0.7rem !important; }
+            .prize-level-total { font-size: 0.75rem !important; }
+            
+            .total-summary {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+        }
+        
+        /* iPhone 12 / 13 / 14 / 15 / 16 系列（390 ~ 430 逻辑像素） */
+        @media (min-width: 376px) and (max-width: 430px) {
+            .container {
+                padding-top: max(20px, env(safe-area-inset-top));
+                padding-left: max(16px, env(safe-area-inset-left));
+                padding-right: max(16px, env(safe-area-inset-right));
+                padding-bottom: max(36px, calc(env(safe-area-inset-bottom) + 16px));
+            }
+            .logo { font-size: 2rem; letter-spacing: 1px; }
+            .header { margin-bottom: 26px; }
+            .tagline { letter-spacing: 3px; }
+            .card { padding: 18px 16px; border-radius: 18px; }
+            .draw-section { padding: 16px 12px; }
+            .stats-panel { padding: 14px; }
+            .insight-desc { font-size: 0.95rem; padding: 10px 14px; }
+        }
+        
+        /* iPhone 横屏（高度被压缩时收紧留白） */
+        @media (max-width: 950px) and (max-height: 500px) and (orientation: landscape) {
+            .container { padding-top: max(14px, env(safe-area-inset-top)); }
+            .header { margin-bottom: 16px; }
+            .logo { font-size: 1.6rem; }
+            .card { padding: 16px; margin-bottom: 14px; }
+            .table-wrap { max-height: 70vh; }
+        }
+        
+        /* iPad 横屏优化 */
+        @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+            .container { max-width: 900px; }
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        /* ==================== 布局优化：双栏 + 快速选号 ==================== */
+        .layout-top {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .layout-top > .card { margin-bottom: 0; }
+
+        /* 快捷注数 */
+        .quick-count {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .quick-count-label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.4);
+        }
+        .quick-count-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .chip {
+            padding: 7px 14px;
+            min-height: 36px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .chip:hover {
+            border-color: rgba(255, 215, 0, 0.5);
+            color: var(--gold);
+            background: rgba(255, 215, 0, 0.08);
+        }
+
+        .btn-sm {
+            padding: 10px 18px;
+            font-size: 0.9rem;
+            border-radius: 12px;
+            min-height: 44px;
+        }
+
+        /* 快速选号 */
+        .quick-pick {
+            margin-top: 22px;
+            padding-top: 18px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.12);
+        }
+        .quick-pick-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .quick-pick-label {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 1px;
+        }
+        .quick-pick-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .quick-pick-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 14px;
+        }
+        .quick-pick-list:empty { display: none; }
+
+        .pick-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            color: #fff;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .pick-item:hover {
+            border-color: rgba(255, 215, 0, 0.45);
+            background: rgba(255, 215, 0, 0.08);
+        }
+        .pick-item.active {
+            border-color: var(--gold);
+            background: rgba(255, 215, 0, 0.12);
+            box-shadow: inset 0 0 0 1px rgba(255, 215, 0, 0.35);
+        }
+        .pick-index {
+            flex: 0 0 auto;
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.45);
+        }
+        .pick-balls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .pick-ball {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .pick-ball.front { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .pick-ball.back { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .pick-fill {
+            margin-left: auto;
+            flex: 0 0 auto;
+            font-size: 0.72rem;
+            color: rgba(255, 215, 0, 0.75);
+            white-space: nowrap;
+        }
+
+        /* 填入高亮反馈 */
+        @keyframes inputFlash {
+            from { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.75); }
+            to { box-shadow: 0 0 0 14px rgba(255, 215, 0, 0); }
+        }
+        .draw-input.flash { animation: inputFlash 0.55s ease-out; }
+
+        /* 统计卡片：开奖后才出现，避免空白占位 */
+        .stats-card { display: none; scroll-margin-top: 12px; }
+        .stats-card.show { display: block; animation: fadeInUp 0.45s ease; }
+        .stats-card .card-header { margin-bottom: 20px; }
+        .stats-card .stats-panel,
+        .stats-card .stats-panel.show {
+            display: block;
+            margin-top: 0;
+            padding: 0;
+            border: none;
+            background: none;
+            animation: none;
+        }
+        .stats-card .stats-panel:not(.show) { display: none; }
+        .stats-card .history-match { margin-top: 22px; }
+
+        /* 移动端：选号按钮并排、球更紧凑 */
+        @media (max-width: 768px) {
+            .layout-top { gap: 16px; margin-bottom: 16px; }
+            .quick-pick { margin-top: 18px; padding-top: 16px; }
+            .quick-pick-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            .quick-pick-label { text-align: center; }
+            .quick-pick-actions .btn {
+                flex: 1 1 0;
+                width: auto;
+                min-width: 0;
+            }
+            .pick-item { padding: 9px 10px; gap: 8px; }
+            .pick-ball {
+                width: 23px;
+                height: 23px;
+                font-size: 0.68rem;
+            }
+            .pick-fill { font-size: 0.66rem; }
+            .quick-count { margin-top: 14px; gap: 8px; }
+            .chip { min-height: 40px; padding: 8px 14px; }
+            .stats-card .card-header { margin-bottom: 16px; }
+        }
+
+        /* 宽屏：模拟与开奖并排，记录区保持整行宽度 */
+        @media (min-width: 1100px) {
+            .container {
+                max-width: 1240px;
+                padding-left: 32px;
+                padding-right: 32px;
+            }
+            .layout-top {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                gap: 26px;
+                margin-bottom: 26px;
+                align-items: start;
+            }
+            .layout-top > .card { padding: 26px 28px; }
+            .table-wrap { max-height: 640px; }
+            /* 输入框与按钮同一行，底部对齐 */
+            .layout-top .sim-area {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto auto;
+                align-items: end;
+                gap: 12px;
+            }
+            .layout-top .sim-area .btn { padding: 16px 22px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <div class="container">
+        <header class="header">
+            <h1 class="logo"><span class="logo-emoji">🎰</span> 大乐透</h1>
+            <p class="tagline">Super Lotto Simulator</p>
+        </header>
+        
+        <!-- 顶部操作区：宽屏下左右并排 -->
+        <div class="layout-top">
+        <!-- 模拟投注 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon gold">🎲</div>
+                <div>
+                    <div class="card-title">模拟投注</div>
+                    <div class="card-subtitle">按正态分布生成 · 已剔除极端组合</div>
+                </div>
+            </div>
+            <div class="sim-area">
+                <div class="input-group">
+                    <label class="input-label">购买注数</label>
+                    <input type="number" class="sim-input" id="simCount" value="1000" min="1" max="1000000" inputmode="numeric" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false">
+                </div>
+                <button class="btn btn-gold" id="simBtn" onclick="startSimulation()">
+                    <span>🚀</span> 开始模拟
+                </button>
+                <button class="btn btn-danger" onclick="clearAll()">
+                    <span>🗑️</span> 清空
+                </button>
+            </div>
+            <div class="quick-count">
+                <span class="quick-count-label">快捷注数</span>
+                <div class="quick-count-actions">
+                    <button type="button" class="chip" onclick="setSimCount(100)">100</button>
+                    <button type="button" class="chip" onclick="setSimCount(1000)">1000</button>
+                    <button type="button" class="chip" onclick="setSimCount(5000)">5000</button>
+                    <button type="button" class="chip" onclick="setSimCount(10000)">1万</button>
+                </div>
+            </div>
+            <div class="progress-wrap" id="simProgress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="simProgressFill"></div>
+                </div>
+                <div class="progress-text" id="simProgressText">正在生成...</div>
+            </div>
+            <div class="sim-info" id="simInfo"></div>
+        </div>
+        
+        <!-- 开奖 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon red">🎯</div>
+                <div>
+                    <div class="card-title">开奖号码</div>
+                    <div class="card-subtitle">输入一等奖号码（一等奖由你确定）</div>
+                </div>
+            </div>
+            <div class="draw-section">
+                <div class="draw-row">
+                    <span class="draw-label">前区</span>
+                    <div class="draw-inputs" id="frontInputs"></div>
+                </div>
+                <div class="draw-row">
+                    <span class="draw-label">后区</span>
+                    <div class="draw-inputs" id="backInputs"></div>
+                </div>
+                <div class="draw-buttons">
+                    <button class="btn btn-gold" onclick="startLottery()">
+                        <span>🏆</span> 开奖匹配
+                    </button>
+                    <button class="btn btn-outline" onclick="clearDrawInputs()">
+                        <span>🗑️</span> 清空
+                    </button>
+                </div>
+            </div>
+
+            <!-- 快速选号：随机生成候选号码，点一组直接填入 -->
+            <div class="quick-pick">
+                <div class="quick-pick-bar">
+                    <span class="quick-pick-label">🎲 快速选号</span>
+                    <div class="quick-pick-actions">
+                        <button class="btn btn-outline btn-sm" onclick="generatePicks(1)">随机 1 组</button>
+                        <button class="btn btn-outline btn-sm" onclick="generatePicks(5)">随机 5 组</button>
+                    </div>
+                </div>
+                <div class="quick-pick-list" id="quickPickList"></div>
+            </div>
+        </div>
+        </div>
+
+        <!-- 中奖统计：开奖后出现 -->
+        <div class="card stats-card" id="statsCard">
+            <div class="card-header">
+                <div class="card-icon gold">📊</div>
+                <div>
+                    <div class="card-title">开奖结果</div>
+                    <div class="card-subtitle">本次与累计中奖统计</div>
+                </div>
+            </div>
+            <div class="stats-panel" id="statsPanel">
+                <div class="stats-grid" id="statsGrid"></div>
+                <div id="prizeTable"></div>
+            </div>
+
+            <div class="history-match" id="historyMatch">
+                <div class="match-title">
+                    <span>🏆</span>
+                    <span>历史一等奖匹配</span>
+                </div>
+                <div id="matchList"></div>
+            </div>
+        </div>
+        
+        <!-- 历史记录 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon blue">📋</div>
+                <div>
+                    <div class="card-title">投注记录</div>
+                    <div class="card-subtitle">查看和管理投注结果</div>
+                </div>
+            </div>
+            <div class="filter-bar">
+                <button class="btn btn-gold" id="winFilterBtn" onclick="toggleWinFilter()" style="padding:10px 20px;font-size:0.9rem;">
+                    🏆 仅中奖
+                </button>
+                <select class="filter-select" id="filterLevel" onchange="applyFilter()">
+                    <option value="all">全部奖级</option>
+                    <option value="win">仅中奖</option>
+                    <option value="lose">未中奖</option>
+                    <option value="1">一等奖</option>
+                    <option value="2">二等奖</option>
+                    <option value="3">三等奖</option>
+                    <option value="4-7">四~七等奖</option>
+                </select>
+                <input type="number" class="filter-input" id="filterId" placeholder="搜索序号" oninput="scheduleApplyFilter()" inputmode="numeric">
+                <span class="filter-info" id="filterInfo">共 0 注</span>
+            </div>
+            <div class="table-wrap" id="historyContainer">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>前区</th>
+                            <th>后区</th>
+                            <th>开奖前区</th>
+                            <th>开奖后区</th>
+                            <th>命中</th>
+                            <th>奖级</th>
+                            <th>奖金</th>
+                            <th>奖级明细</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination">
+                <button class="page-btn" id="prevPage" onclick="prevPage()">‹ 上一页</button>
+                <div class="page-info" id="pageInfo"></div>
+                <button class="page-btn" id="nextPage" onclick="nextPage()">下一页 ›</button>
+            </div>
+            <div class="empty-state" id="emptyHistory">
+                <div style="font-size: 3rem; margin-bottom: 16px;">🎫</div>
+                暂无投注记录<br>
+                <small style="color: rgba(255,255,255,0.3)">点击"开始模拟"生成投注记录</small>
+            </div>
+            <div class="export-btns">
+                <button class="btn btn-outline" onclick="exportHistoryCSV()">📥 导出全部</button>
+                <button class="btn btn-outline" onclick="exportFilteredCSV()">📥 导出筛选</button>
+            </div>
+        </div>
+        
+        <!-- 一等奖历史 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon teal">📚</div>
+                <div>
+                    <div class="card-title">往期一等奖</div>
+                    <div class="card-subtitle">导入历史开奖记录</div>
+                </div>
+            </div>
+            <div class="upload-zone" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <div class="upload-text">点击或拖拽上传 CSV 文件</div>
+                <div class="upload-hint">支持格式：期号,红球1-5,蓝球1-2</div>
+            </div>
+            <input type="file" class="file-input" id="jackpotFile" accept=".csv">
+            <div class="jackpot-list" id="jackpotList"></div>
+            <div class="jackpot-controls" id="jackpotControls" style="display:none;">
+                <span class="jackpot-count" id="jackpotCount"></span>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-outline" onclick="document.getElementById('jackpotFile').click()">➕ 继续上传</button>
+                    <button class="btn btn-outline" onclick="clearJackpot()">🗑️ 清空</button>
+                    <button class="btn btn-outline" onclick="exportJackpotCSV()">📥 导出</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isHighPool = false;
+
+        const PRIZE_CONFIG = {
+            1: { name: '一等奖', baseAmount: 6800000, desc: '5+2' },
+            2: { name: '二等奖', baseAmount: 150000, desc: '5+1' },
+            3: { name: '三等奖', amount: 5000, highPoolAmount: 6666, desc: '5+0/4+2' },
+            4: { name: '四等奖', amount: 300, highPoolAmount: 380, desc: '4+1' },
+            5: { name: '五等奖', amount: 150, highPoolAmount: 200, desc: '4+0/3+2' },
+            6: { name: '六等奖', amount: 15, highPoolAmount: 18, desc: '3+1/2+2' },
+            7: { name: '七等奖', amount: 5, highPoolAmount: 7, desc: '3+0/2+1/1+2/0+2' }
+        };
+        
+        // 数字缩写格式化：10000以下显示原数字，10000以上显示X万（处理负数）
+        function formatNumShort(num) {
+            if (num === null || num === undefined || isNaN(num)) return '0';
+            const isNegative = num < 0;
+            const absNum = Math.abs(num);
+            if (absNum >= 10000) {
+                const wan = absNum / 10000;
+                if (wan === Math.floor(wan)) {
+                    return (isNegative ? '-' : '') + wan + '万';
+                }
+                return (isNegative ? '-' : '') + wan.toFixed(1) + '万';
+            }
+            return num.toLocaleString();
+        }
+        
+        // 具象化解读：按月薪5k、月均开销1800的标准，用"亏了几个月"来衡量
+        const MONTHLY_SALARY = 5000;      // 月薪
+        const MONTHLY_EXPENSE = 1800;     // 月均开销
+        
+        // 简洁的盈亏解读
+        function getMoneySense(amount) {
+            const absAmt = Math.abs(amount);
+            const monthsSalary = (absAmt / MONTHLY_SALARY).toFixed(1);
+            const monthsExpense = (absAmt / MONTHLY_EXPENSE).toFixed(1);
+            return { salary: monthsSalary, expense: monthsExpense };
+        }
+        
+        // 生成简洁的生活化解读
+        function generateLifeInsight(sessionInvestment, sessionPrize, sessionNetProfit, totalInvestmentAll, totalPrizeAll, totalNetProfitAll, stats) {
+            const sessionSense = getMoneySense(Math.abs(sessionNetProfit));
+            const totalSense = getMoneySense(Math.abs(totalNetProfitAll));
+            const roi = totalInvestmentAll > 0 ? (totalPrizeAll / totalInvestmentAll * 100).toFixed(1) : 0;
+            
+            // 奖级对标
+            const prizeDesc = [];
+            if (stats[1] > 0) prizeDesc.push(`<span class="insight-tag gold">🏆 一等奖×${stats[1]} (≈首付/小车)</span>`);
+            if (stats[2] > 0) prizeDesc.push(`<span class="insight-tag silver">🥈 二等奖×${stats[2]} (≈年终奖)</span>`);
+            if (stats[3] > 0) prizeDesc.push(`<span class="insight-tag bronze">🎁 三等奖×${stats[3]} (≈高端手机)</span>`);
+            if (stats[4] > 0) prizeDesc.push(`<span class="insight-tag normal">四等奖×${stats[4]}</span>`);
+            if (stats[5] > 0) prizeDesc.push(`<span class="insight-tag normal">五等奖×${stats[5]}</span>`);
+            
+            return `
+                <div class="stats-section insight-section">
+                    <div class="stats-section-title insight">
+                        <span class="badge badge-insight">💡</span>
+                        <span>体感解读</span>
+                    </div>
+                    <div class="insight-content">
+                        <div class="insight-main">
+                            <div class="insight-kpi">
+                                <div class="kpi-item">
+                                    <div class="kpi-label">本次盈亏</div>
+                                    <div class="kpi-value ${sessionNetProfit >= 0 ? 'win' : 'lose'}">${sessionNetProfit >= 0 ? '+' : '-'}${sessionSense.expense}个月生活费</div>
+                                </div>
+                                <div class="kpi-item">
+                                    <div class="kpi-label">累计盈亏</div>
+                                    <div class="kpi-value ${totalNetProfitAll >= 0 ? 'win' : 'lose'}">${totalNetProfitAll >= 0 ? '+' : '-'}${totalSense.expense}个月生活费</div>
+                                </div>
+                                <div class="kpi-item">
+                                    <div class="kpi-label">返奖率</div>
+                                    <div class="kpi-value">${roi}%</div>
+                                </div>
+                            </div>
+                            <div class="insight-desc">
+                                ${totalNetProfitAll < 0 
+                                    ? `<span class="lose-text">已亏掉 ≈ ${totalSense.salary} 个月工资</span>`
+                                    : totalNetProfitAll > 0 
+                                        ? `<span class="win-text">已赚 ≈ ${totalSense.salary} 个月工资</span>`
+                                        : `<span class="neutral-text">刚好回本</span>`
+                                }
+                            </div>
+                        </div>
+                        ${prizeDesc.length > 0 ? `<div class="insight-tags">${prizeDesc.join('')}</div>` : ''}
+                        <div class="insight-summary">
+                            📊 ${totalInvestmentAll.toLocaleString()}元 → ${totalPrizeAll.toLocaleString()}元 | 亏损${Math.abs(totalNetProfitAll).toLocaleString()}元
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getPrizeAmount(level) {
+            if (level === 1) return getFirstPrizeAmount();
+            if (level === 2) return getSecondPrizeAmount();
+            const config = PRIZE_CONFIG[level];
+            return isHighPool && config.highPoolAmount ? config.highPoolAmount : config.amount;
+        }
+
+        function getFirstPrizeAmount() {
+            if (jackpotList.length === 0) return PRIZE_CONFIG[1].baseAmount;
+            const recent = jackpotList.slice(0, Math.min(50, jackpotList.length));
+            const sum = recent.reduce((acc, j) => acc + (j.p1Amount || PRIZE_CONFIG[1].baseAmount), 0);
+            return Math.round(sum / recent.length);
+        }
+
+        function getSecondPrizeAmount() {
+            if (jackpotList.length === 0) return PRIZE_CONFIG[2].baseAmount;
+            const recent = jackpotList.slice(0, Math.min(50, jackpotList.length));
+            const sum = recent.reduce((acc, j) => acc + (j.p2Amount || PRIZE_CONFIG[2].baseAmount), 0);
+            return Math.round(sum / recent.length);
+        }
+
+        function updatePrizeDisplay() {
+            const p1 = getFirstPrizeAmount();
+            const p2 = getSecondPrizeAmount();
+            document.querySelectorAll('.p1-amount').forEach(el => el.textContent = formatNumShort(p1));
+            document.querySelectorAll('.p2-amount').forEach(el => el.textContent = formatNumShort(p2));
+            document.querySelectorAll('.pool-status').forEach(el => {
+                el.textContent = isHighPool ? '奖池≥8亿 (派奖中)' : '奖池<8亿';
+                el.style.color = isHighPool ? '#ffd700' : 'rgba(255,255,255,0.5)';
+            });
+        }
+
+        function toggleHighPool() {
+            isHighPool = !isHighPool;
+            updatePrizeDisplay();
+            if (filteredHistory.length > 0) {
+                recalculatePrizes();
+            }
+        }
+
+        function recalculatePrizes() {
+            filteredHistory.forEach(record => {
+                if (record.level > 0) {
+                    record.prize = getPrizeAmount(record.level);
+                }
+            });
+            updateHistoryDisplay();
+            updateFilterInfo();
+        }
+
+        let history = [];
+        let jackpotList = [];
+        let isSimRunning = false;
+        let currentDrawNumbers = null;
+        let filteredHistory = [];
+        let currentPage = 1;
+        const pageSize = 100;
+        
+        // 历史开奖记录（每次开奖独立保存）
+        let drawHistory = [];
+        let totalStats = {};  // 累计统计
+        let undrawnCount = 0;  // 未开奖注数
+
+        // ==================================================================
+        // 号码生成过滤器：按正态分布剔除几乎不可能出现的组合
+        // 前区共 C(35,5)=324632 种，过滤后保留 299935 种（92.39%），
+        // 即拒绝采样平均 1.08 次即可命中，不影响生成速度。
+        // 注：下面三个函数会被 toString() 注入 Web Worker，必须自包含
+        //     （只能引用自身参数和 Math，不能引用页面里的其它变量）
+        // ==================================================================
+
+        // 前区（5/35）合理性校验，front 必须是升序排列的 5 个号码
+        function isRealisticFront(front) {
+            const a = front[0], b = front[1], c = front[2], d = front[3], e = front[4];
+
+            // ① 和值：理论均值 μ=90、标准差 σ≈21.2，只保留 μ±2.5σ（≈98.8% 区间）
+            //    和值 <37 或 >143 的组合合计约 0.83%，属于正态分布两端尾巴
+            const sum = a + b + c + d + e;
+            if (sum < 37 || sum > 143) return false;
+
+            // ② 跨度：首尾差值 <12，即 5 个号挤在 12 个号段内，约 2.58%
+            if (e - a < 12) return false;
+
+            // ③ 连号：出现 4 连及以上（含 01-02-03-04-05 这类顺子），概率约 0.3%
+            let run = 1;
+            const arr = [a, b, c, d, e];
+            for (let i = 1; i < 5; i++) {
+                run = arr[i] === arr[i - 1] + 1 ? run + 1 : 1;
+                if (run >= 4) return false;
+            }
+
+            // ④ 分区：把 1-35 按 7 个一号一段分成 5 区，≥4 个号落在同一区约 1.54%
+            const zone = [0, 0, 0, 0, 0];
+            for (let i = 0; i < 5; i++) zone[Math.floor((arr[i] - 1) / 7)]++;
+            if (Math.max(zone[0], zone[1], zone[2], zone[3], zone[4]) >= 4) return false;
+
+            // ⑤ 同尾：3 个及以上号码尾数相同（如 05/15/25），约 3.68%
+            const tail = {};
+            let maxTail = 0;
+            for (let i = 0; i < 5; i++) {
+                const t = arr[i] % 10;
+                tail[t] = (tail[t] || 0) + 1;
+                if (tail[t] > maxTail) maxTail = tail[t];
+            }
+            if (maxTail >= 3) return false;
+
+            return true;
+        }
+
+        // 生成一注符合上述分布规律的前区号码（最多重试 300 次，兜底返回最后一次）
+        function randomFront() {
+            let last = null;
+            for (let attempt = 0; attempt < 300; attempt++) {
+                const front = [];
+                while (front.length < 5) {
+                    const num = Math.floor(Math.random() * 35) + 1;
+                    if (!front.includes(num)) front.push(num);
+                }
+                front.sort((num1, num2) => num1 - num2);
+                if (isRealisticFront(front)) return front;
+                last = front;
+            }
+            return last;
+        }
+
+        // 后区 2 个号（1-12），只要不重复即可
+        function randomBack() {
+            const back = [];
+            while (back.length < 2) {
+                const num = Math.floor(Math.random() * 12) + 1;
+                if (!back.includes(num)) back.push(num);
+            }
+            return back.sort((num1, num2) => num1 - num2);
+        }
+
+        // Web Worker
+        const workerCode = `
+            let jackpotData = [];
+            
+            ${isRealisticFront.toString()}
+            ${randomFront.toString()}
+            ${randomBack.toString()}
+            ${calculateLevel.toString()}
+            
+            function generateDrawFromJackpot() {
+                if (jackpotData.length === 0) {
+                    return { front: randomFront(), back: randomBack() };
+                }
+                const jackpot = jackpotData[Math.floor(Math.random() * jackpotData.length)];
+                return { front: [...jackpot.front], back: [...jackpot.back] };
+            }
+            
+            // 结果用紧凑的 Uint8Array 回传（每注 8 字节），走 Transferable 零拷贝，
+            // 避免上百万个对象的结构化克隆把主线程卡死。
+            // 每注布局：前区 5 个 + 后区 2 个 + 1 字节(前区命中<<4 | 后区命中)
+            function generateTickets(count) {
+                // 先生成一个开奖号码，所有投注共用这一个开奖号码
+                const draw = generateDrawFromJackpot();
+                const drawFront = draw.front;
+                const drawBack = draw.back;
+                const packed = new Uint8Array(count * 8);
+                const levels = new Uint8Array(count);
+                
+                for (let i = 0; i < count; i++) {
+                    const userFront = randomFront();
+                    const userBack = randomBack();
+                    const o = i * 8;
+                    packed[o] = userFront[0];
+                    packed[o + 1] = userFront[1];
+                    packed[o + 2] = userFront[2];
+                    packed[o + 3] = userFront[3];
+                    packed[o + 4] = userFront[4];
+                    packed[o + 5] = userBack[0];
+                    packed[o + 6] = userBack[1];
+                    
+                    let fm = 0;
+                    for (let k = 0; k < 5; k++) {
+                        if (drawFront.indexOf(userFront[k]) >= 0) fm++;
+                    }
+                    let bm = 0;
+                    for (let k = 0; k < 2; k++) {
+                        if (drawBack.indexOf(userBack[k]) >= 0) bm++;
+                    }
+                    packed[o + 7] = (fm << 4) | bm;
+                    levels[i] = calculateLevel(fm, bm);
+                    
+                    if ((i + 1) % 5000 === 0) {
+                        self.postMessage({ type: 'progress', processed: i + 1, total: count });
+                    }
+                }
+                return { draw: { front: drawFront, back: drawBack }, packed, levels };
+            }
+            
+            self.onmessage = function(e) {
+                const { type, count, jackpotList } = e.data;
+                if (type === 'sim') {
+                    jackpotData = jackpotList || [];
+                    self.postMessage({ type: 'progress', processed: 0, total: count });
+                    const result = generateTickets(count);
+                    self.postMessage({
+                        type: 'complete',
+                        draw: result.draw,
+                        packed: result.packed,
+                        levels: result.levels
+                    }, [result.packed.buffer, result.levels.buffer]);
+                }
+            };
+        `;
+
+        let worker = null;
+        function createWorker() {
+            if (worker) worker.terminate();
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            worker = new Worker(URL.createObjectURL(blob));
+            return worker;
+        }
+
+        // 号码球输入框（iOS 上关闭自动更正，聚焦使用数字键盘）
+        function createDrawInput(id, max, className) {
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = className;
+            input.min = 1;
+            input.max = max;
+            input.placeholder = '-';
+            input.id = id;
+            input.inputMode = 'numeric';
+            input.autocomplete = 'off';
+            input.autocorrect = 'off';
+            input.spellcheck = false;
+            // iOS 数字键盘没有“完成”键，回车时收起键盘
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    input.blur();
+                }
+            });
+            return input;
+        }
+
+        function init() {
+            const frontInputs = document.getElementById('frontInputs');
+            const backInputs = document.getElementById('backInputs');
+            for (let i = 0; i < 5; i++) {
+                const input = createDrawInput('front' + i, 35, 'draw-input');
+                frontInputs.appendChild(input);
+            }
+            for (let i = 0; i < 2; i++) {
+                const input = createDrawInput('back' + i, 12, 'draw-input back-input');
+                backInputs.appendChild(input);
+            }
+            initUploadArea();
+            updatePrizeDisplay();
+        }
+
+        function initUploadArea() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('jackpotFile');
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+            uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+            });
+            fileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+        }
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => parseJackpotCSV(e.target.result);
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function parseJackpotCSV(content) {
+            const lines = content.split('\n').filter(l => l.trim());
+            if (lines.length < 2) { alert('文件格式错误'); return; }
+            const header = lines[0].toLowerCase();
+            const newEntries = [];
+            if (header.includes('红球') || header.includes('蓝球')) {
+                for (let i = 1; i < lines.length; i++) {
+                    const parts = lines[i].split(',').map(p => p.trim());
+                    if (parts.length >= 9) {
+                        const period = parts[0];
+                        const front = [2,3,4,5,6].map(j => parseInt(parts[j])).filter(n => !isNaN(n));
+                        const back = [7,8].map(j => parseInt(parts[j])).filter(n => !isNaN(n));
+                        const p1Amount = parts.length > 9 && parts[9] ? parseInt(parts[9].replace(/,/g, '')) : 0;
+                        const p2Amount = parts.length > 10 && parts[10] ? parseInt(parts[10].replace(/,/g, '')) : 0;
+                        if (front.length === 5 && back.length === 2) {
+                            newEntries.push({ period, front, back, p1Amount, p2Amount });
+                        }
+                    }
+                }
+            } else {
+                for (let i = 1; i < lines.length; i++) {
+                    const parts = lines[i].split(',').map(p => p.trim());
+                    if (parts.length >= 3) {
+                        const period = parts[0];
+                        const front = parts[1].split(/\s+/).map(n => parseInt(n)).filter(n => !isNaN(n));
+                        const back = parts[2].split(/\s+/).map(n => parseInt(n)).filter(n => !isNaN(n));
+                        const p1Amount = parts.length > 3 && parts[3] ? parseInt(parts[3].replace(/,/g, '')) : 0;
+                        const p2Amount = parts.length > 4 && parts[4] ? parseInt(parts[4].replace(/,/g, '')) : 0;
+                        if (front.length === 5 && back.length === 2) {
+                            newEntries.push({ period, front, back, p1Amount, p2Amount });
+                        }
+                    }
+                }
+            }
+            if (newEntries.length === 0) { alert('未解析到有效数据'); return; }
+            const existing = new Set(jackpotList.map(j => j.period));
+            newEntries.forEach(e => { if (!existing.has(e.period)) { jackpotList.push(e); existing.add(e.period); } });
+            jackpotList.sort((a, b) => b.period.localeCompare(a.period));
+            renderJackpotList();
+            updatePrizeDisplay();
+            alert('成功导入 ' + newEntries.length + ' 条一等奖记录');
+        }
+
+        function renderJackpotList() {
+            const uploadArea = document.getElementById('uploadArea');
+            const listEl = document.getElementById('jackpotList');
+            const controls = document.getElementById('jackpotControls');
+            const countEl = document.getElementById('jackpotCount');
+            if (jackpotList.length === 0) {
+                uploadArea.style.display = 'block';
+                listEl.innerHTML = '';
+                controls.style.display = 'none';
+                return;
+            }
+            uploadArea.style.display = 'none';
+            controls.style.display = 'flex';
+            countEl.textContent = '已导入 ' + jackpotList.length + ' 条一等奖记录';
+            listEl.innerHTML = jackpotList.slice(0, 20).map(item => 
+                '<div class="jackpot-item">' +
+                    '<span class="jackpot-period">第' + item.period + '期</span>' +
+                    '<div class="jackpot-balls">' +
+                        '<span style="color:rgba(255,255,255,0.5)">前:</span>' +
+                        item.front.map(n => '<span class="jackpot-ball front">' + n + '</span>').join('') +
+                        '<span style="color:rgba(255,255,255,0.5);margin-left:8px">后:</span>' +
+                        item.back.map(n => '<span class="jackpot-ball back">' + n + '</span>').join('') +
+                    '</div>' +
+                '</div>'
+            ).join('');
+            if (jackpotList.length > 20) {
+                listEl.innerHTML += '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:10px">...还有 ' + (jackpotList.length - 20) + ' 条</div>';
+            }
+        }
+
+        function clearJackpot() {
+            if (jackpotList.length > 0 && !confirm('确定清空一等奖记录？')) return;
+            jackpotList = [];
+            renderJackpotList();
+        }
+
+        function exportJackpotCSV() {
+            if (jackpotList.length === 0) { alert('无记录可导出'); return; }
+            const csv = ['期号,前区号码,后区号码,一等奖金额,二等奖金额', ...jackpotList.map(j =>
+                j.period + ',"' + j.front.join(' ') + '","' + j.back.join(' ')+ '",' + (j.p1Amount || '') + ',' + (j.p2Amount || '')
+            )].join('\n');
+            downloadCSV('\uFEFF' + csv, '一等奖记录_' + Date.now() + '.csv');
+        }
+
+        function startSimulation() {
+            const count = parseInt(document.getElementById('simCount').value);
+            if (isNaN(count) || count < 1 || count > 1000000) {
+                alert('请输入1-1000000之间的注数');
+                return;
+            }
+            // 手机上百万注会占用几百 MB 内存，先提示，避免直接卡死或页面被系统回收
+            if (count > 300000 && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                const estMB = Math.round(count * 0.3 / 1024);
+                if (!confirm('将生成 ' + count.toLocaleString() + ' 注，预计占用 ' + estMB +
+                    'MB 内存，可能明显卡顿。\n建议 30 万注以内，确定继续？')) {
+                    return;
+                }
+            }
+            if (isSimRunning) return;
+            isSimRunning = true;
+            const btn = document.getElementById('simBtn');
+            const progress = document.getElementById('simProgress');
+            const progressFill = document.getElementById('simProgressFill');
+            const progressText = document.getElementById('simProgressText');
+            const simInfo = document.getElementById('simInfo');
+            btn.disabled = true;
+            progress.classList.add('show');
+            progressText.classList.add('show');
+            simInfo.textContent = '';
+            document.getElementById('statsPanel').classList.remove('show');
+            document.getElementById('historyMatch').classList.remove('show');
+            syncStatsCardVisibility();
+            currentDrawNumbers = null;
+            const updateProgress = (done, total) => {
+                const percent = Math.round((done / total) * 100);
+                progressFill.style.width = percent + '%';
+                progressText.textContent = '正在生成 ' + percent + '%...';
+            };
+            let w = null;
+            try {
+                w = createWorker();
+            } catch (err) {
+                w = null;
+            }
+            // iOS 以本地文件等方式打开时可能创建不了 Blob Worker，退回主线程分片生成
+            if (!w) {
+                generateTicketsFallback(count, jackpotList, updateProgress, applySimulationResult);
+                return;
+            }
+            w.onmessage = function(e) {
+                if (e.data.type === 'progress') {
+                    updateProgress(e.data.processed, e.data.total);
+                } else if (e.data.type === 'complete') {
+                    const payload = { draw: e.data.draw, packed: e.data.packed, levels: e.data.levels };
+                    w.terminate();
+                    progressFill.style.width = '100%';
+                    progressText.textContent = '正在写入 ' + payload.levels.length.toLocaleString() + ' 条记录...';
+                    // 先让浏览器把上面的提示画出来，再执行百万级的对象创建
+                    setTimeout(function() {
+                        applySimulationResult(payload);
+                    }, 30);
+                }
+            };
+            w.onerror = function() {
+                w.terminate();
+                worker = null;
+                progressFill.style.width = '0%';
+                generateTicketsFallback(count, jackpotList, updateProgress, applySimulationResult);
+            };
+            w.postMessage({ type: 'sim', count, jackpotList });
+        }
+
+        // 把生成结果写入历史记录并刷新界面（Worker 与主线程两条路径共用）
+        // payload = { draw: {front, back}, packed: Uint8Array(count*8), levels: Uint8Array(count) }
+        function applySimulationResult(payload) {
+            const draw = payload.draw;
+            const packed = payload.packed;
+            const levels = payload.levels;
+            const total = levels.length;
+            const startId = history.length;
+            const drawFront = draw.front;
+            const drawBack = draw.back;
+
+            for (let i = 0; i < total; i++) {
+                const o = i * 8;
+                const code = packed[o + 7];
+                const level = levels[i];
+                history.push({
+                    id: startId + i + 1,
+                    userFront: [packed[o], packed[o + 1], packed[o + 2], packed[o + 3], packed[o + 4]],
+                    userBack: [packed[o + 5], packed[o + 6]],
+                    drawFront,          // 全批共用同一组开奖号码，共享引用不额外占内存
+                    drawBack,
+                    frontMatches: code >> 4,
+                    backMatches: code & 15,
+                    level,
+                    prize: level > 0 ? getPrizeAmount(level) : 0,
+                    drawn: false        // 新注标记为未开奖
+                });
+            }
+
+            isSimRunning = false;
+            document.getElementById('simBtn').disabled = false;
+            document.getElementById('simProgress').classList.remove('show');
+            document.getElementById('simProgressFill').style.width = '0%';
+            document.getElementById('simInfo').textContent = '✓ 已生成 ' + history.length.toLocaleString() + ' 注投注';
+            undrawnCount = history.length;  // 所有新注都是未开奖状态
+            applyFilter();                  // 按当前筛选条件刷新（无筛选时直接引用全量）
+            updatePrizeDisplay();
+        }
+
+        // 主线程分片生成（无 Worker 时的降级方案，分批让出主线程避免卡死）
+        // 输出与 Worker 一致：{ draw, packed, levels }
+        function generateTicketsFallback(count, jackpotData, onProgress, onDone) {
+            let draw;
+            if (jackpotData && jackpotData.length > 0) {
+                const j = jackpotData[Math.floor(Math.random() * jackpotData.length)];
+                draw = { front: j.front.slice(), back: j.back.slice() };
+            } else {
+                draw = { front: randomFront(), back: randomBack() };
+            }
+            const drawFront = draw.front;
+            const drawBack = draw.back;
+            const packed = new Uint8Array(count * 8);
+            const levels = new Uint8Array(count);
+            let done = 0;
+            const CHUNK = 2000;
+
+            function step() {
+                const end = Math.min(done + CHUNK, count);
+                for (let i = done; i < end; i++) {
+                    const userFront = randomFront();
+                    const userBack = randomBack();
+                    const o = i * 8;
+                    packed[o] = userFront[0];
+                    packed[o + 1] = userFront[1];
+                    packed[o + 2] = userFront[2];
+                    packed[o + 3] = userFront[3];
+                    packed[o + 4] = userFront[4];
+                    packed[o + 5] = userBack[0];
+                    packed[o + 6] = userBack[1];
+
+                    let fm = 0;
+                    for (let k = 0; k < 5; k++) if (drawFront.indexOf(userFront[k]) >= 0) fm++;
+                    let bm = 0;
+                    for (let k = 0; k < 2; k++) if (drawBack.indexOf(userBack[k]) >= 0) bm++;
+                    packed[o + 7] = (fm << 4) | bm;
+                    levels[i] = calculateLevel(fm, bm);
+                }
+                done = end;
+                onProgress(done, count);
+                if (done < count) {
+                    setTimeout(step, 0);
+                } else {
+                    onDone({ draw: { front: drawFront, back: drawBack }, packed, levels });
+                }
+            }
+            step();
+        }
+
+        function startLottery() {
+            if (history.length === 0) {
+                alert('请先生成模拟投注记录');
+                return;
+            }
+            const frontNums = [];
+            const backNums = [];
+            for (let i = 0; i < 5; i++) {
+                const val = parseInt(document.getElementById('front' + i).value, 10);
+                if (isNaN(val) || val < 1 || val > 35) {
+                    alert('前区第' + (i + 1) + '个号码无效(1-35)');
+                    return;
+                }
+                frontNums.push(val);
+            }
+            for (let i = 0; i < 2; i++) {
+                const val = parseInt(document.getElementById('back' + i).value, 10);
+                if (isNaN(val) || val < 1 || val > 12) {
+                    alert('后区第' + (i + 1) + '个号码无效(1-12)');
+                    return;
+                }
+                backNums.push(val);
+            }
+            currentDrawNumbers = {
+                front: frontNums.sort((a, b) => a - b),
+                back: backNums.sort((a, b) => a - b)
+            };
+            matchAllTickets();
+            checkHistoryMatch();
+        }
+
+        function matchAllTickets() {
+            const drawFront = currentDrawNumbers.front;
+            const drawBack = currentDrawNumbers.back;
+
+            // 本次开奖统计（不影响历史累计）
+            const stats = {};
+            for (let i = 0; i <= 7; i++) stats[i] = 0;
+            let sessionPrize = 0;
+            let matched = 0;
+
+            // 单次遍历：边匹配边统计，避免对百万条记录反复 filter / 生成中间数组
+            const total = history.length;
+            for (let i = 0; i < total; i++) {
+                const record = history[i];
+                if (record.drawn) continue;
+                matched++;
+
+                let frontMatches = 0;
+                for (let k = 0; k < 5; k++) {
+                    if (drawFront.indexOf(record.userFront[k]) >= 0) frontMatches++;
+                }
+                let backMatches = 0;
+                for (let k = 0; k < 2; k++) {
+                    if (drawBack.indexOf(record.userBack[k]) >= 0) backMatches++;
+                }
+                const level = calculateLevel(frontMatches, backMatches);
+                const prize = level > 0 ? getPrizeAmount(level) : 0;
+
+                // 标记为已开奖（每注只参与一次开奖）
+                record.drawn = true;
+                record.drawFront = drawFront;
+                record.drawBack = drawBack;
+                record.frontMatches = frontMatches;
+                record.backMatches = backMatches;
+                record.level = level;
+                record.prize = prize;
+
+                if (level > 0) {
+                    stats[level]++;
+                    sessionPrize += prize;
+                } else {
+                    stats[0]++;
+                }
+            }
+
+            if (matched === 0) {
+                alert('所有注都已开奖完毕！');
+                return;
+            }
+
+            // 开奖后已无未开奖的注
+            undrawnCount = 0;
+
+            // 保存本次开奖到历史（包含本次投入金额）
+            const sessionInvestment = matched * 2;
+            const drawRecord = {
+                drawNumber: drawHistory.length + 1,
+                drawFront: [...drawFront],
+                drawBack: [...drawBack],
+                stats: { ...stats },
+                totalPrize: sessionPrize,
+                sessionInvestment: sessionInvestment,  // 本次投入金额
+                drawTime: Date.now()
+            };
+            drawHistory.push(drawRecord);
+
+            // 更新累计统计（不覆盖历史开奖记录）
+            for (let i = 0; i <= 7; i++) {
+                if (!totalStats[i]) totalStats[i] = 0;
+                totalStats[i] += stats[i] || 0;
+            }
+
+            // 显示本次统计（第 4 个参数是本次实际开奖注数）
+            displayStats(stats, sessionPrize, drawRecord.drawNumber, matched, sessionInvestment);
+        }
+
+        function calculateLevel(frontMatches, backMatches) {
+            // ============================================
+            // 超级大乐透官方中奖规则
+            // 一等奖：5+2
+            // 二等奖：5+1
+            // 三等奖：5+0 或 4+2
+            // 四等奖：4+1
+            // 五等奖：4+0 或 3+2
+            // 六等奖：3+1 或 2+2
+            // 七等奖：3+0、2+1、1+2、0+2
+            // 其余不中奖
+            // ============================================
+            
+            // 一等奖：5+2
+            if (frontMatches === 5 && backMatches === 2) return 1;
+            
+            // 二等奖：5+1
+            if (frontMatches === 5 && backMatches === 1) return 2;
+            
+            // 三等奖：5+0 或 4+2
+            if ((frontMatches === 5 && backMatches === 0) || (frontMatches === 4 && backMatches === 2)) return 3;
+            
+            // 四等奖：4+1
+            if (frontMatches === 4 && backMatches === 1) return 4;
+            
+            // 五等奖：4+0 或 3+2
+            if ((frontMatches === 4 && backMatches === 0) || (frontMatches === 3 && backMatches === 2)) return 5;
+            
+            // 六等奖：3+1 或 2+2
+            if ((frontMatches === 3 && backMatches === 1) || (frontMatches === 2 && backMatches === 2)) return 6;
+            
+            // 七等奖：3+0、2+1、1+2、0+2
+            if ((frontMatches === 3 && backMatches === 0) || 
+                (frontMatches === 2 && backMatches === 1) || 
+                (frontMatches === 1 && backMatches === 2) || 
+                (frontMatches === 0 && backMatches === 2)) return 7;
+            
+            // 其余不中奖
+            return 0;
+        }
+        
+        // ============================================
+        // 辅助函数：计算命中数并返回完整结果
+        // 输入：开奖号码数组、用户投注号码数组
+        // 输出：{frontMatches, backMatches, level, levelName}
+        // ============================================
+        function calculatePrizeResult(drawFront, drawBack, userFront, userBack) {
+            const frontMatches = userFront.filter(n => drawFront.includes(n)).length;
+            const backMatches = userBack.filter(n => drawBack.includes(n)).length;
+            const level = calculateLevel(frontMatches, backMatches);
+            
+            const levelNames = ['', '一等奖', '二等奖', '三等奖', '四等奖', '五等奖', '六等奖', '七等奖'];
+            
+            return {
+                frontMatches: frontMatches,
+                backMatches: backMatches,
+                level: level,
+                levelName: level > 0 ? levelNames[level] : '未中奖'
+            };
+        }
+
+        function displayStats(stats, sessionPrize, drawNumber, undrawnCountNow, sessionInvestment) {
+            const panel = document.getElementById('statsPanel');
+            const grid = document.getElementById('statsGrid');
+            const table = document.getElementById('prizeTable');
+            
+            // 本次统计
+            const sessionWinners = Object.values(stats).reduce((a, b) => a + b, 0) - (stats[0] || 0);
+            const sessionNetProfit = sessionPrize - sessionInvestment;
+            
+            // 累计统计（使用每次开奖记录的投入金额）
+            const totalPrizeAll = drawHistory.reduce((sum, d) => sum + d.totalPrize, 0);
+            const totalInvestmentAll = drawHistory.reduce((sum, d) => sum + (d.sessionInvestment || 0), 0);
+            const totalNetProfitAll = totalPrizeAll - totalInvestmentAll;
+            
+            const p1Count = stats[1] || 0;
+            const p2Count = stats[2] || 0;
+            const p3Count = stats[3] || 0;
+            const p4Count = stats[4] || 0;
+            const p5Count = stats[5] || 0;
+            const p6Count = stats[6] || 0;
+            const p7Count = stats[7] || 0;
+            
+            // 本次开奖统计
+            grid.innerHTML = `
+                <div class="stats-section">
+                    <div class="stats-section-title current">
+                        <span class="badge badge-current">本次</span>
+                        <span>第 ${drawNumber} 次开奖</span>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box current">
+                            <div class="stat-label">开奖注数</div>
+                            <div class="stat-value">${undrawnCountNow.toLocaleString()}</div>
+                        </div>
+                        <div class="stat-box current">
+                            <div class="stat-label">本次投入</div>
+                            <div class="stat-value">${formatNumShort(sessionInvestment)}</div>
+                        </div>
+                        <div class="stat-box current">
+                            <div class="stat-label">本次中奖</div>
+                            <div class="stat-value highlight">${sessionWinners} <small style="font-size:0.5em">注</small></div>
+                        </div>
+                        <div class="stat-box current">
+                            <div class="stat-label">本次奖金</div>
+                            <div class="stat-value win">${formatNumShort(sessionPrize)}</div>
+                        </div>
+                        <div class="stat-box current">
+                            <div class="stat-label">本次收益</div>
+                            <div class="stat-value ${sessionNetProfit >= 0 ? 'win' : 'lose'}">${sessionNetProfit >= 0 ? '+' : ''}${formatNumShort(sessionNetProfit)}</div>
+                        </div>
+                        <div class="stat-box current">
+                            <div class="stat-label">一等奖</div>
+                            <div class="stat-value ${p1Count > 0 ? 'win' : ''}">${p1Count}</div>
+                        </div>
+                        <div class="stat-box current">
+                            <div class="stat-label">二等奖</div>
+                            <div class="stat-value ${p2Count > 0 ? 'highlight' : ''}">${p2Count}</div>
+                        </div>
+                        <div class="stat-box current">
+                            <div class="stat-label">其他奖</div>
+                            <div class="stat-value">${p3Count + p4Count + p5Count + p6Count + p7Count}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <div class="stats-section-title total">
+                        <span class="badge badge-total">累计</span>
+                        <span>累计统计 ${drawHistory.length} 次开奖</span>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box total">
+                            <div class="stat-label">累计投入</div>
+                            <div class="stat-value">${formatNumShort(totalInvestmentAll)}</div>
+                        </div>
+                        <div class="stat-box total">
+                            <div class="stat-label">累计奖金</div>
+                            <div class="stat-value win">${formatNumShort(totalPrizeAll)}</div>
+                        </div>
+                        <div class="stat-box total">
+                            <div class="stat-label">累计净收益</div>
+                            <div class="stat-value ${totalNetProfitAll >= 0 ? 'win' : 'lose'}">${totalNetProfitAll >= 0 ? '+' : ''}${formatNumShort(totalNetProfitAll)}</div>
+                        </div>
+                        <div class="stat-box total">
+                            <div class="stat-label">未开奖</div>
+                            <div class="stat-value ${undrawnCount > 0 ? '' : 'highlight'}">${undrawnCount} <small style="font-size:0.5em">注</small></div>
+                        </div>
+                    </div>
+                </div>
+                ${generateLifeInsight(sessionInvestment, sessionPrize, sessionNetProfit, totalInvestmentAll, totalPrizeAll, totalNetProfitAll, stats)}
+            `;
+            
+            // 本次奖级统计 - 只显示本次有中奖的奖级
+            let tableHTML = `
+                <div class="stats-section">
+                    <div class="stats-section-title current">
+                        <span class="badge badge-current">本次</span>
+                        <span>奖级明细</span>
+                    </div>
+                    <div class="prize-levels-grid">`;
+            
+            // 只显示本次有中奖的奖级
+            let hasAnyPrize = false;
+            for (let i = 1; i <= 7; i++) {
+                if (stats[i] && stats[i] > 0) {
+                    hasAnyPrize = true;
+                    const prizeAmt = getPrizeAmount(i);
+                    const bgColor = i === 1 ? 'rgba(255,215,0,0.2)' : (i === 2 ? 'rgba(192,192,192,0.15)' : 'rgba(26,188,156,0.1)');
+                    const borderColor = i === 1 ? '#ffd700' : (i === 2 ? '#c0c0c0' : '#1abc9c');
+                    const emoji = i === 1 ? '🏆' : (i === 2 ? '🥈' : (i === 3 ? '🎁' : '✨'));
+                    tableHTML += `<div class="prize-level-item" style="background:${bgColor};border-left:3px solid ${borderColor};">
+                        <div class="prize-level-header">
+                            <span class="prize-level-name">${emoji} ${PRIZE_CONFIG[i].name}</span>
+                            <span class="prize-level-count">×${stats[i]}</span>
+                        </div>
+                        <div class="prize-level-amount">${formatNumShort(prizeAmt)}元/注</div>
+                        <div class="prize-level-total">合计: ${formatNumShort(stats[i] * prizeAmt)}元</div>
+                    </div>`;
+                }
+            }
+            
+            if (!hasAnyPrize) {
+                tableHTML += `<div class="prize-level-empty">本次暂无中奖，继续加油💪</div>`;
+            }
+            
+            // 未中奖数量
+            if (stats[0] && stats[0] > 0) {
+                tableHTML += `<div class="prize-level-item no-prize">
+                    <div class="prize-level-header">
+                        <span class="prize-level-name">😢 未中奖</span>
+                        <span class="prize-level-count">×${stats[0]}</span>
+                    </div>
+                </div>`;
+            }
+            
+            tableHTML += `</div></div>`;
+            
+            // 累计汇总（简化展示）
+            tableHTML += `
+                <div class="stats-section" style="margin-top:20px;">
+                    <div class="stats-section-title total">
+                        <span class="badge badge-total">累计</span>
+                        <span>${drawHistory.length}次开奖汇总</span>
+                    </div>
+                    <div class="total-summary">
+                        <div class="total-stat">
+                            <span class="total-label">累计投入</span>
+                            <span class="total-value">${formatNumShort(totalInvestmentAll)}元</span>
+                        </div>
+                        <div class="total-stat">
+                            <span class="total-label">累计中奖</span>
+                            <span class="total-value win">${formatNumShort(totalPrizeAll)}元</span>
+                        </div>
+                        <div class="total-stat">
+                            <span class="total-label">累计净收益</span>
+                            <span class="total-value ${totalNetProfitAll >= 0 ? 'win' : 'lose'}">${totalNetProfitAll >= 0 ? '+' : ''}${formatNumShort(totalNetProfitAll)}元</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:15px;">
+                    <button class="btn btn-outline" onclick="toggleHighPool()" style="font-size:0.85rem;">${isHighPool ? '🔓 关闭派奖' : '🔒 开启派奖(奖池≥8亿)'}</button>
+                </div>`;
+            
+            updatePrizeDisplay();
+            
+            // 添加中奖统计条
+            tableHTML += '<div class="win-stats-bar">';
+            const winStats = [
+                { level: 1, name: '一等奖', count: p1Count, color: '#ffd700' },
+                { level: 2, name: '二等奖', count: p2Count, color: '#c0c0c0' },
+                { level: 3, name: '三等奖', count: p3Count, color: '#cd7f32' },
+                { level: 4, name: '四等奖', count: p4Count, color: '#1abc9c' },
+                { level: 5, name: '五等奖', count: p5Count, color: '#9b59b6' },
+                { level: 6, name: '六等奖', count: p6Count, color: '#e91e63' },
+                { level: 7, name: '七等奖', count: p7Count, color: '#3498db' }
+            ];
+            winStats.forEach(stat => {
+                tableHTML += '<div class="win-stat-item">' +
+                    '<span class="win-stat-count" style="color:' + stat.color + '">' + stat.count + '</span>' +
+                    '<span class="win-stat-label">' + stat.name + '</span>' +
+                '</div>';
+            });
+            tableHTML += '</div>';
+            
+            table.innerHTML = tableHTML;
+            panel.classList.add('show');
+            syncStatsCardVisibility();
+            // 小屏上统计可能出现屏幕外，轻推一下让用户看到结果
+            const statsCard = document.getElementById('statsCard');
+            requestAnimationFrame(() => {
+                const rect = statsCard.getBoundingClientRect();
+                if (rect.top > window.innerHeight * 0.7) {
+                    statsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        }
+
+        // 统计卡片只在有内容（统计面板 / 历史匹配）时出现
+        function syncStatsCardVisibility() {
+            const card = document.getElementById('statsCard');
+            if (!card) return;
+            const statsOn = document.getElementById('statsPanel').classList.contains('show');
+            const matchOn = document.getElementById('historyMatch').classList.contains('show');
+            card.classList.toggle('show', statsOn || matchOn);
+        }
+
+        function checkHistoryMatch() {
+            const matchDiv = document.getElementById('historyMatch');
+            const matchList = document.getElementById('matchList');
+            if (jackpotList.length === 0 || !currentDrawNumbers) {
+                matchDiv.classList.remove('show');
+                syncStatsCardVisibility();
+                return;
+            }
+            const matches = jackpotList.filter(j => 
+                arraysEqual(currentDrawNumbers.front, j.front) && 
+                arraysEqual(currentDrawNumbers.back, j.back)
+            );
+            if (matches.length === 0) {
+                matchList.innerHTML = '<div class="no-match">本期开奖号码未匹配历史一等奖记录</div>';
+            } else {
+                matchList.innerHTML = matches.map(m => 
+                    '<div class="match-item">' +
+                        '<div class="match-period">🏆 匹配历史第' + m.period + '期一等奖！</div>' +
+                        '<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">' +
+                            '<div><span style="color:rgba(255,255,255,0.5)">前区:</span> ' + currentDrawNumbers.front.map(n => '<span class="ball front matched">' + n + '</span>').join('') + '</div>' +
+                            '<div><span style="color:rgba(255,255,255,0.5)">后区:</span> ' + currentDrawNumbers.back.map(n => '<span class="ball back matched">' + n + '</span>').join('') + '</div>' +
+                        '</div>' +
+                    '</div>'
+                ).join('');
+            }
+            matchDiv.classList.add('show');
+            syncStatsCardVisibility();
+        }
+
+        function arraysEqual(a, b) {
+            if (a.length !== b.length) return false;
+            return a.every((val, i) => val === b[i]);
+        }
+
+        function setSimCount(count) {
+            document.getElementById('simCount').value = count;
+        }
+
+        function randomDraw() {
+            try {
+                setDrawInputs(randomFront(), randomBack());
+                flashDrawInputs();
+            } catch (err) {
+                console.error('随机开奖失败:', err);
+                alert('随机开奖失败，请重试');
+            }
+        }
+
+        // ================================================================
+        // 快速选号：随机生成 1 组 / 5 组候选号码，点一组填入开奖输入框
+        // ================================================================
+        let pickCandidates = [];
+
+        // 把一组号码写进 7 个输入框（前区 5 + 后区 2）
+        function setDrawInputs(front, back) {
+            for (let i = 0; i < 5; i++) {
+                const el = document.getElementById('front' + i);
+                if (el) el.value = front[i];
+            }
+            for (let i = 0; i < 2; i++) {
+                const el = document.getElementById('back' + i);
+                if (el) el.value = back[i];
+            }
+            // 号码变了，之前那次开奖号码作废
+            currentDrawNumbers = null;
+        }
+
+        // 生成候选号码；groupCount=1 时直接填入，>1 时列出供选择
+        function generatePicks(groupCount) {
+            const count = Math.min(20, Math.max(1, parseInt(groupCount, 10) || 1));
+            const sets = [];
+            const seen = new Set();
+            let guard = 0;
+            // 同一批候选内部去重，避免 5 组里出现重复号码
+            while (sets.length < count && guard < count * 80) {
+                guard++;
+                const front = randomFront();
+                const back = randomBack();
+                const key = front.join(',') + '|' + back.join(',');
+                if (seen.has(key)) continue;
+                seen.add(key);
+                sets.push({ front, back });
+            }
+            pickCandidates = sets;
+            if (count === 1) {
+                applyPick(0);
+            } else {
+                renderPickList(-1);
+            }
+        }
+
+        function renderPickList(activeIndex) {
+            const list = document.getElementById('quickPickList');
+            if (!list) return;
+            list.innerHTML = pickCandidates.map((pick, index) => {
+                const balls = pick.front.map(n => '<span class="pick-ball front">' + n + '</span>').join('') +
+                    pick.back.map(n => '<span class="pick-ball back">' + n + '</span>').join('');
+                return '<button type="button" class="pick-item' + (index === activeIndex ? ' active' : '') +
+                    '" onclick="applyPick(' + index + ')">' +
+                    '<span class="pick-index">第' + (index + 1) + '组</span>' +
+                    '<span class="pick-balls">' + balls + '</span>' +
+                    '<span class="pick-fill">' + (index === activeIndex ? '已填入' : '点此填入') + '</span>' +
+                    '</button>';
+            }).join('');
+        }
+
+        function applyPick(index) {
+            const pick = pickCandidates[index];
+            if (!pick) return;
+            setDrawInputs(pick.front, pick.back);
+            renderPickList(index);
+            flashDrawInputs();
+        }
+
+        // 填入后让号码球闪一下，明确"已经填进去了"
+        function flashDrawInputs() {
+            const inputs = document.querySelectorAll('.draw-input');
+            inputs.forEach(input => {
+                input.classList.remove('flash');
+                void input.offsetWidth;   // 强制重排，允许动画重复播放
+                input.classList.add('flash');
+            });
+            setTimeout(() => inputs.forEach(input => input.classList.remove('flash')), 700);
+        }
+
+        function clearDrawInputs() {
+            for (let i = 0; i < 5; i++) document.getElementById('front' + i).value = '';
+            for (let i = 0; i < 2; i++) document.getElementById('back' + i).value = '';
+            currentDrawNumbers = null;
+            pickCandidates = [];
+            renderPickList(-1);
+        }
+
+        function clearAll() {
+            if (history.length > 0 && !confirm('确定清空所有模拟记录？')) return;
+            history = [];
+            filteredHistory = [];
+            currentPage = 1;
+            currentDrawNumbers = null;
+            // 清空历史开奖记录
+            drawHistory = [];
+            totalStats = {};
+            undrawnCount = 0;
+            clearDrawInputs();
+            document.getElementById('statsPanel').classList.remove('show');
+            document.getElementById('historyMatch').classList.remove('show');
+            syncStatsCardVisibility();
+            document.getElementById('simInfo').textContent = '';
+            document.getElementById('filterLevel').value = 'all';
+            document.getElementById('filterId').value = '';
+            updateHistoryDisplay();
+            updateFilterInfo();
+        }
+
+        // 百万级数据下逐字过滤会卡顿，输入框改为防抖后再筛选
+        let filterTimer = null;
+        function scheduleApplyFilter() {
+            if (filterTimer) clearTimeout(filterTimer);
+            filterTimer = setTimeout(applyFilter, 300);
+        }
+
+        function applyFilter() {
+            const levelFilter = document.getElementById('filterLevel').value;
+            const idFilter = document.getElementById('filterId').value;
+
+            // 无筛选条件时直接引用全量数组，省掉一次百万级遍历
+            if (levelFilter === 'all' && !idFilter) {
+                filteredHistory = history;
+                currentPage = 1;
+                updateHistoryDisplay();
+                updateFilterInfo();
+                return;
+            }
+
+            filteredHistory = history.filter(record => {
+                if (levelFilter === 'win' && (record.level === null || record.level === 0)) return false;
+                if (levelFilter === 'lose' && (record.level !== null && record.level > 0)) return false;
+                if (levelFilter === '4-7' && (record.level === null || record.level < 4 || record.level > 7)) return false;
+                if (levelFilter !== 'all' && levelFilter !== 'win' && levelFilter !== 'lose' && levelFilter !== '4-7') {
+                    if (record.level !== parseInt(levelFilter)) return false;
+                }
+                if (idFilter && record.id !== parseInt(idFilter)) return false;
+                return true;
+            });
+            currentPage = 1;
+            updateHistoryDisplay();
+            updateFilterInfo();
+        }
+        
+        let winFilterActive = false;
+        function toggleWinFilter() {
+            const btn = document.getElementById('winFilterBtn');
+            const select = document.getElementById('filterLevel');
+            
+            if (winFilterActive) {
+                // 取消仅中奖筛选
+                winFilterActive = false;
+                btn.style.background = 'linear-gradient(135deg, #ffd700, #ff8c00)';
+                btn.style.color = '#000';
+                select.value = 'all';
+            } else {
+                // 启用仅中奖筛选
+                winFilterActive = true;
+                btn.style.background = 'linear-gradient(135deg, #1abc9c, #16a085)';
+                btn.style.color = '#fff';
+                select.value = 'win';
+            }
+            applyFilter();
+        }
+
+        function updateFilterInfo() {
+            const filterInfo = document.getElementById('filterInfo');
+            if (history.length === 0) {
+                filterInfo.textContent = '共 0 注';
+            } else if (filteredHistory.length === history.length) {
+                filterInfo.textContent = '共 ' + history.length.toLocaleString() + ' 注';
+            } else {
+                filterInfo.textContent = '筛选: ' + filteredHistory.length.toLocaleString() + ' / ' + history.length.toLocaleString() + ' 注';
+            }
+        }
+
+        function updatePagination() {
+            const pagination = document.getElementById('pagination');
+            const pageInfo = document.getElementById('pageInfo');
+            const prevBtn = document.getElementById('prevPage');
+            const nextBtn = document.getElementById('nextPage');
+            const totalPages = Math.ceil(filteredHistory.length / pageSize);
+            
+            if (filteredHistory.length === 0) {
+                pagination.classList.remove('show');
+                return;
+            }
+            
+            if (totalPages <= 1) {
+                pagination.classList.remove('show');
+                return;
+            }
+            
+            pagination.classList.add('show');
+            pageInfo.innerHTML = '第 <strong>' + currentPage + '</strong> / ' + totalPages + ' 页';
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.ceil(filteredHistory.length / pageSize);
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+            currentPage = page;
+            updateHistoryDisplay();
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                updateHistoryDisplay();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredHistory.length / pageSize);
+            if (currentPage < totalPages) {
+                currentPage++;
+                updateHistoryDisplay();
+            }
+        }
+
+        function updateHistoryDisplay() {
+            const container = document.getElementById('historyContainer');
+            const empty = document.getElementById('emptyHistory');
+            const tbody = document.getElementById('historyBody');
+            if (history.length === 0) {
+                container.classList.remove('show');
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+            container.classList.add('show');
+            
+            const totalPages = Math.ceil(filteredHistory.length / pageSize);
+            if (currentPage > totalPages) currentPage = totalPages || 1;
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const pageData = filteredHistory.slice(start, end);
+            
+            tbody.innerHTML = pageData.map(record => {
+                let levelBadge, prizeCell, rowClass = '', idClass = '', prizeClass = '', prizeAmountClass = '';
+                if (record.level === null) {
+                    levelBadge = '<span class="pending-status">待开奖</span>';
+                    prizeCell = '-';
+                } else if (record.level > 0) {
+                    levelBadge = '<span class="prize-badge p' + record.level + (record.level <= 2 ? ' badge-pulse' : '') + '">' + PRIZE_CONFIG[record.level].name + '</span>';
+                    prizeCell = formatNumShort(record.prize);
+                    prizeAmountClass = 'prize-amount' + (record.level <= 2 ? ' high' : '');
+                    if (record.level === 1) {
+                        rowClass = 'row-p1';
+                        idClass = 'id-highlight';
+                        prizeClass = 'prize-cell win';
+                    } else if (record.level === 2) {
+                        rowClass = 'row-p2';
+                        idClass = 'id-silver';
+                        prizeClass = 'prize-cell silver';
+                    } else if (record.level === 3) {
+                        rowClass = 'row-p3';
+                        idClass = 'id-bronze';
+                        prizeClass = 'prize-cell bronze';
+                    } else if (record.level === 4) {
+                        rowClass = 'row-p4';
+                    } else if (record.level === 5 || record.level === 6) {
+                        rowClass = 'row-p' + record.level;
+                    }
+                } else {
+                    levelBadge = '<span class="prize-badge none">未中奖</span>';
+                    prizeCell = '-';
+                }
+                const drawFrontHtml = record.drawFront ? record.drawFront.map(n => 
+                    '<span class="mini-ball front' + (record.userFront.includes(n) ? ' matched' : '') + '">' + n + '</span>'
+                ).join('') : '-';
+                const drawBackHtml = record.drawBack ? record.drawBack.map(n => 
+                    '<span class="mini-ball back' + (record.userBack.includes(n) ? ' matched' : '') + '">' + n + '</span>'
+                ).join('') : '-';
+                const matches = (record.frontMatches !== null ? record.frontMatches : '-') + '+' + (record.backMatches !== null ? record.backMatches : '-');
+                // 奖级明细
+                let prizeDetailCell = '-';
+                if (record.level !== null && record.level > 0) {
+                    const prizeAmt = record.prize;
+                    const prizeName = PRIZE_CONFIG[record.level].name;
+                    prizeDetailCell = '<span style="font-size:0.75rem;color:rgba(255,255,255,0.7);">1注 × ' + formatNumShort(prizeAmt) + '元</span>';
+                } else if (record.level === null) {
+                    prizeDetailCell = '<span style="color:rgba(255,215,0,0.6);">待开奖</span>';
+                }
+                return '<tr class="' + rowClass + '">' +
+                    '<td class="' + idClass + '">#' + record.id + '</td>' +
+                    '<td>' + record.userFront.map(n => '<span class="mini-ball front">' + n + '</span>').join('') + '</td>' +
+                    '<td>' + record.userBack.map(n => '<span class="mini-ball back">' + n + '</span>').join('') + '</td>' +
+                    '<td>' + drawFrontHtml + '</td>' +
+                    '<td>' + drawBackHtml + '</td>' +
+                    '<td><strong>' + matches + '</strong></td>' +
+                    '<td>' + levelBadge + '</td>' +
+                    '<td class="' + prizeClass + '"><span class="' + prizeAmountClass + '">' + prizeCell + '</span></td>' +
+                    '<td style="text-align:left;padding-left:8px;">' + prizeDetailCell + '</td>' +
+                '</tr>';
+            }).join('');
+            
+            updatePagination();
+        }
+
+        function exportHistoryCSV() {
+            if (history.length === 0) { alert('无记录可导出'); return; }
+            exportToCSV(history, '投注记录_全部_' + Date.now() + '.csv');
+        }
+
+        function exportFilteredCSV() {
+            if (filteredHistory.length === 0) { alert('无筛选结果可导出'); return; }
+            exportToCSV(filteredHistory, '投注记录_筛选_' + Date.now() + '.csv');
+        }
+
+        function exportToCSV(data, filename) {
+            const headers = ['序号', '前区投注', '后区投注', '前区开奖', '后区开奖', '前区命中', '后区命中', '奖级', '奖金', '奖级明细'];
+            const rows = data.map(r => [
+                r.id,
+                r.userFront.join(' '),
+                r.userBack.join(' '),
+                r.drawFront ? r.drawFront.join(' ') : '',
+                r.drawBack ? r.drawBack.join(' ') : '',
+                r.frontMatches !== null ? r.frontMatches : '',
+                r.backMatches !== null ? r.backMatches : '',
+                r.level !== null ? (r.level > 0 ? PRIZE_CONFIG[r.level].name : '未中奖') : '待开奖',
+                r.prize,
+                r.level !== null && r.level > 0 ? '1注 × ' + r.prize + '元' : (r.level === null ? '待开奖' : '-')
+            ]);
+            const csv = [headers, ...rows].map(row => row.map(cell => '"' + cell + '"').join(',')).join('\n');
+            downloadCSV('\uFEFF' + csv, filename);
+        }
+
+        function downloadCSV(content, filename) {
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
