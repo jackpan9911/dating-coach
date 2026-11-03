@@ -142,6 +142,46 @@ footer{
 .cta{background:var(--acc);color:#fff;border-radius:12px;padding:11px;font-weight:700;font-size:15px}
 
 /* sheets */
+/* 左侧会话抽屉 */
+.drawer{
+  position:fixed;top:0;bottom:0;left:0;z-index:31;width:84%;max-width:350px;
+  background:var(--bg2);border-right:1px solid var(--line);
+  transform:translateX(-102%);transition:transform .26s cubic-bezier(.32,.72,0,1);
+  display:flex;flex-direction:column;padding-top:var(--safe-t);
+}
+.drawer.on{transform:none}
+.drawer-bd{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.drawer-bd.on{opacity:1;pointer-events:auto}
+.dw-hd{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px 10px;border-bottom:1px solid var(--line);
+}
+.dw-hd b{font-size:15px;letter-spacing:.4px}
+.dw-bd{flex:1 1 auto;overflow-y:auto;padding:8px 12px calc(18px + var(--safe-b));-webkit-overflow-scrolling:touch}
+.dw-sec{
+  display:flex;align-items:center;justify-content:space-between;
+  margin:12px 2px 7px;font-size:11px;color:var(--tx3);letter-spacing:.3px;
+}
+.dw-sec .mini{
+  font-size:11.5px;color:var(--acc);background:var(--accbg);
+  border:1px solid rgba(240,104,143,.3);padding:4px 9px;border-radius:999px;
+}
+.dw-item{
+  display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:11px;
+  border:1px solid transparent;margin-bottom:5px;background:rgba(255,255,255,.02);
+}
+.dw-item.on{background:var(--accbg);border-color:rgba(240,104,143,.35)}
+.dw-item .t{flex:1 1 auto;min-width:0}
+.dw-item .t b{display:block;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dw-item .t small{display:block;font-size:10.5px;color:var(--tx3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dw-item .n{flex:0 0 auto;font-size:10px;color:var(--tx3);background:var(--card);border-radius:999px;padding:2px 7px}
+.dw-item .x{flex:0 0 auto;font-size:12px;color:var(--tx3);padding:2px 2px 2px 6px}
+.dw-day{font-size:10.5px;color:var(--tx3);margin:10px 2px 6px;padding-left:7px;border-left:2px solid rgba(240,104,143,.35)}
+.dw-empty{font-size:12px;color:var(--tx3);padding:6px 4px 10px;line-height:1.6}
+
 .backdrop{
   position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;opacity:0;pointer-events:none;
   transition:opacity .2s;
@@ -254,12 +294,12 @@ footer{
 <body>
 
 <header>
+  <button class="hbtn" id="btnMenu" title="会话记录">☰</button>
   <div class="brand">恋爱<i>教练</i></div>
   <button class="pill" id="pill">
     <span class="nm" id="pillName">未选档案</span>
     <span class="st" id="pillStage">点这里选择 / 新建对象</span>
   </button>
-  <button class="hbtn" id="btnNew" title="新对话">✎</button>
   <button class="hbtn" id="btnSet" title="设置">⚙</button>
 </header>
 
@@ -274,6 +314,27 @@ footer{
   </div>
   <div class="hint" id="hint">建议先选对象档案；截图会按图片理解，直接发聊天截图最省事</div>
 </footer>
+
+<!-- 左侧会话抽屉 -->
+<aside class="drawer" id="drawer">
+  <div class="dw-hd">
+    <b>会话</b>
+    <button class="hbtn" id="dwClose">✕</button>
+  </div>
+  <div class="dw-bd">
+    <div class="dw-sec">
+      <span>对象档案</span>
+      <button class="mini" id="dwNewP">＋ 新建</button>
+    </div>
+    <div id="dwProfs"></div>
+    <div class="dw-sec">
+      <span>对话记录 · 按时间升序</span>
+      <button class="mini" id="dwNewS">＋ 新对话</button>
+    </div>
+    <div id="dwSess"></div>
+  </div>
+</aside>
+<div class="drawer-bd" id="dwBd"></div>
 
 <div class="backdrop" id="bd"></div>
 
@@ -291,23 +352,6 @@ footer{
       <button class="chip" id="btnExportAll">导出全部</button>
     </div>
     <div class="field tip">档案只存在这台手机里。在电脑上写好 `profiles/*.md` 可以"导入 .md"带过来；这里改完也能导出。不选档案也能聊，只是 AI 记不住这个人的细节。</div>
-  </div>
-  <div class="sheet-ft"><button class="btn-ghost" data-close>关闭</button></div>
-</section>
-
-<!-- 对话记录 -->
-<section class="sheet" id="sheetC">
-  <div class="sheet-hd">
-    <h2>对话记录</h2>
-    <button class="hbtn" data-close>✕</button>
-  </div>
-  <div class="sheet-bd">
-    <div class="tip" id="sessHint"></div>
-    <div class="plist" id="slist"></div>
-    <div class="chips">
-      <button class="chip" id="btnNewSess">＋ 新对话</button>
-      <button class="chip" id="btnClearSess">清空本段</button>
-    </div>
   </div>
   <div class="sheet-ft"><button class="btn-ghost" data-close>关闭</button></div>
 </section>
@@ -509,7 +553,7 @@ function newSession(){
   CUR_SID = null;
   HISTORY = [];
   renderHistory();
-  toast('已新开一段，旧对话在「对话记录」里');
+  toast('已新开一段，旧对话在左上角 ☰ 里');
 }
 function openSession(sid){
   CUR_SID = sid;
@@ -525,7 +569,7 @@ function delSession(sid){
     if(idx.length) openSession(idx[0].id);
     else { CUR_SID = null; HISTORY = []; renderHistory(); }
   }
-  renderSessions();
+  if($('#drawer').classList.contains('on')) renderDrawer();
 }
 loadSessions();
 
@@ -693,9 +737,9 @@ function emptyState(){
         <li>点顶部胶囊 → 选择或新建对象档案（选了才会结合档案）</li>
         <li>把聊天记录粘进来，或点左下 ＋ 发聊天截图</li>
         <li>拿到的回复可以直接复制发出去</li>
-        <li>顶部 ✎ 是「对话记录」，换新话题也不会覆盖旧的</li>
+        <li>左上角 ☰ 是会话记录，换新话题也不会覆盖旧的</li>
       </ol>
-      ${sessCount > 1 ? `<div class="tip">这个档案下已有 ${sessCount} 段对话，点右上角 ✎ 可以翻回去。</div>` : ''}
+      ${sessCount > 1 ? `<div class="tip">这个对象下已有 ${sessCount} 段对话，点左上角 ☰ 可以翻回去。</div>` : ''}
     </div>
     ${noKey ? '<button class="cta" id="goSet">去填 API Key</button>' : ''}
   `;
@@ -1100,53 +1144,100 @@ $('#bd').onclick = closeSheets;
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheets);
 $('#pill').onclick = () => { renderProfiles(); openSheet('#sheetP'); };
 $('#btnSet').onclick = openSettings;
-$('#btnNew').onclick = () => { renderSessions(); openSheet('#sheetC'); };
 
-/* ---------- 对话记录面板 ---------- */
-function renderSessions(){
-  const box = $('#slist');
-  const idx = sessionIndex();
-  const p = curProfile();
-  $('#sessHint').textContent = p
-    ? '档案「' + p.name + '」下的对话，点一条切回去看；「新对话」不会覆盖旧的。'
-    : '当前没选档案，这些对话存在「临时」区。先去顶部胶囊选个档案，之后的对话会分开记。';
-  box.innerHTML = '';
+/* ---------- 左侧会话抽屉（对象 + 按日期升序的对话记录） ---------- */
+const dwEl = $('#drawer'), dwBd = $('#dwBd');
+function openDrawer(){ renderDrawer(); dwEl.classList.add('on'); dwBd.classList.add('on'); }
+function closeDrawer(){ dwEl.classList.remove('on'); dwBd.classList.remove('on'); }
+$('#btnMenu').onclick = openDrawer;
+$('#dwClose').onclick = closeDrawer;
+dwBd.onclick = closeDrawer;
+$('#dwNewP').onclick = () => { closeDrawer(); openEdit(null); };
+$('#dwNewS').onclick = () => {
+  newSession();
+  renderDrawer();
+  closeDrawer();
+};
+
+function dayKey(ts){
+  const d = new Date(ts || 0);
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+function dayLabel(ts){
+  const now = Date.now();
+  if(dayKey(ts) === dayKey(now)) return '今天';
+  if(dayKey(ts) === dayKey(now - 86400000)) return '昨天';
+  const d = new Date(ts || 0);
+  return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+}
+function hhmm(ts){
+  const d = new Date(ts || 0);
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function renderDrawer(){
+  /* 上半部分：对象档案，点一下切人 */
+  const pb = $('#dwProfs');
+  pb.innerHTML = '';
+  if(!PROF.list.length){
+    pb.innerHTML = '<div class="dw-empty">还没有档案。点右上「＋ 新建」，或先直接聊，之后再存。</div>';
+  }
+  PROF.list.forEach(p => {
+    const n = (store.get('dc.sidx.' + p.id, []) || []).length;
+    const el = document.createElement('div');
+    el.className = 'dw-item' + (p.id === PROF.active ? ' on' : '');
+    el.innerHTML = '<div class="t"><b>' + esc(p.name) + '</b><small>' + esc(profileBrief(p) || '已建档') + '</small></div>'
+      + '<span class="n">' + n + ' 段</span>';
+    el.onclick = () => {
+      if(PROF.active !== p.id){
+        PROF.active = p.id;
+        store.set('dc.profiles', PROF);
+        loadSessions();
+        renderHistory();
+        renderProfiles();
+        toast('已切换到 ' + p.name);
+      }
+      renderDrawer();
+    };
+    pb.appendChild(el);
+  });
+
+  /* 下半部分：当前对象的对话，按时间升序，按天分组 */
+  const sb = $('#dwSess');
+  sb.innerHTML = '';
+  const idx = sessionIndex().slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
   if(!idx.length){
-    box.innerHTML = '<div class="field tip">还没有对话记录。直接发第一条消息就会自动建一条。</div>';
+    sb.innerHTML = '<div class="dw-empty">这个对象下还没有对话。发第一条消息就会自动记一条。</div>';
     return;
   }
+  let lastDay = null;
   idx.forEach(s => {
+    const dk = dayKey(s.ts);
+    if(dk !== lastDay){
+      lastDay = dk;
+      const h = document.createElement('div');
+      h.className = 'dw-day';
+      h.textContent = dayLabel(s.ts);
+      sb.appendChild(h);
+    }
     const el = document.createElement('div');
-    el.className = 'pitem' + (s.id === CUR_SID ? ' on' : '');
-    const d = new Date(s.ts || Date.now());
-    const pad = n => String(n).padStart(2, '0');
-    const stamp = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-    el.innerHTML = '<div class="info"><b>' + esc(s.title || '对话') + '</b><small>' + stamp
-      + (s.id === CUR_SID ? ' · 当前' : '') + '</small></div>'
-      + '<div class="acts"><button data-a="del">🗑</button></div>';
-    el.querySelector('.info').onclick = () => {
-      openSession(s.id); renderSessions(); closeSheets(); toast('已切回这段对话');
+    el.className = 'dw-item' + (s.id === CUR_SID ? ' on' : '');
+    el.innerHTML = '<span class="n">' + hhmm(s.ts) + '</span>'
+      + '<div class="t"><b>' + esc(s.title || '对话') + '</b></div>'
+      + '<button class="x" data-a="del">🗑</button>';
+    el.onclick = () => {
+      openSession(s.id);
+      renderDrawer();
+      closeDrawer();
+      toast('已切回这段对话');
     };
     el.querySelector('[data-a="del"]').onclick = e => {
       e.stopPropagation();
       if(!confirm('删除这条对话记录？不可恢复。')) return;
       delSession(s.id);
     };
-    box.appendChild(el);
+    sb.appendChild(el);
   });
 }
-$('#btnNewSess').onclick = () => { newSession(); renderSessions(); closeSheets(); };
-$('#btnClearSess').onclick = () => {
-  if(!HISTORY.length && !CUR_SID){ toast('已经是空的了'); return; }
-  if(!confirm('清空当前这段对话？其他对话记录不受影响。')) return;
-  if(CUR_SID){
-    store.del(msgKey(CUR_SID));
-    store.set(idxKey(), sessionIndex().filter(s => s.id !== CUR_SID));
-    CUR_SID = null;
-  }
-  HISTORY = [];
-  renderHistory(); renderSessions(); toast('已清空本段');
-};
 
 /* ---------- 输入 ---------- */
 function autosize(){
