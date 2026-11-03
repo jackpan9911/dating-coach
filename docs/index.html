@@ -241,6 +241,13 @@ footer{
   display:grid;place-items:center;align-self:flex-end;
 }
 .msg.user .bub img{max-width:148px;max-height:200px;border-radius:10px;display:block;margin:0 0 6px}
+.cur{
+  display:inline-flex;align-items:center;gap:6px;margin:2px 0 8px;padding:5px 12px;
+  border-radius:999px;background:var(--accbg);border:1px solid rgba(240,104,143,.35);
+  font-size:12.5px;color:var(--tx2);max-width:88vw;
+}
+.cur b{color:var(--tx);font-weight:600;max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cur span{color:var(--tx3);font-size:11.5px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -283,6 +290,23 @@ footer{
       <button class="chip" id="btnExportAll">导出全部</button>
     </div>
     <div class="field tip">档案只存在这台手机里。在电脑上写好 `profiles/*.md` 可以"导入 .md"带过来；这里改完也能导出。不选档案也能聊，只是 AI 记不住这个人的细节。</div>
+  </div>
+  <div class="sheet-ft"><button class="btn-ghost" data-close>关闭</button></div>
+</section>
+
+<!-- 对话记录 -->
+<section class="sheet" id="sheetC">
+  <div class="sheet-hd">
+    <h2>对话记录</h2>
+    <button class="hbtn" data-close>✕</button>
+  </div>
+  <div class="sheet-bd">
+    <div class="tip" id="sessHint"></div>
+    <div class="plist" id="slist"></div>
+    <div class="chips">
+      <button class="chip" id="btnNewSess">＋ 新对话</button>
+      <button class="chip" id="btnClearSess">清空本段</button>
+    </div>
   </div>
   <div class="sheet-ft"><button class="btn-ghost" data-close>关闭</button></div>
 </section>
@@ -403,23 +427,106 @@ let bootMsg = '';
 let PROF = store.get('dc.profiles', { list:[], active:null });
 if(!PROF || !Array.isArray(PROF.list)) PROF = { list:[], active:null };
 const curProfile = () => PROF.list.find(p => p.id === PROF.active) || null;
-const chatKey = () => 'dc.chat.' + (PROF.active || 'none');
-let HISTORY = store.get(chatKey(), []);
+
+/* ---------- 会话：同一档案下可以并存多段对话，新开不覆盖旧的 ---------- */
+const curPid   = () => PROF.active || 'none';
+const idxKey   = () => 'dc.sidx.' + curPid();
+const actKey   = () => 'dc.sact.' + curPid();
+const msgKey   = sid => 'dc.s.' + curPid() + '.' + sid;
+
+let CUR_SID = null;
+let HISTORY = [];
+
+function sessionIndex(){
+  const a = store.get(idxKey(), []);
+  return Array.isArray(a) ? a : [];
+}
+function titleOf(list){
+  const m = list.find(x => x.role === 'user');
+  if(!m) return '空对话';
+  const t = (m.content || '').replace(/\s+/g, ' ').trim();
+  return t ? t.slice(0, 18) : '（截图）';
+}
+function loadSessions(){
+  const p = curPid();
+  let idx = store.get(idxKey(), null);
+  if(!Array.isArray(idx)){
+    idx = [];
+    /* 老版本只有一段对话：迁移成第一条会话 */
+    const old = store.get('dc.chat.' + p, []);
+    if(Array.isArray(old) && old.length){
+      const sid = 's' + Date.now();
+      localStorage.setItem(msgKey(sid), JSON.stringify(old));
+      idx.push({ id:sid, title:titleOf(old), ts:Date.now() });
+      store.del('dc.chat.' + p);
+    }
+    store.set(idxKey(), idx);
+  }
+  if(!idx.length){ CUR_SID = null; HISTORY = []; return; }
+  let act = store.get(actKey(), null);
+  if(!act || !idx.some(s => s.id === act)){
+    act = idx[0].id;
+    store.set(actKey(), act);
+  }
+  CUR_SID = act;
+  HISTORY = store.get(msgKey(act), []);
+}
+/* 写入消息时顺手维护会话索引（标题取第一条用户消息） */
+function touchSession(){
+  const now = Date.now();
+  if(!CUR_SID){
+    CUR_SID = 's' + now + Math.random().toString(36).slice(2, 6);
+    store.set(actKey(), CUR_SID);
+  }
+  const idx = sessionIndex();
+  const title = titleOf(HISTORY);
+  const i = idx.findIndex(s => s.id === CUR_SID);
+  if(i < 0) idx.unshift({ id:CUR_SID, title, ts:now });
+  else { idx[i].title = title; idx[i].ts = now; }
+  store.set(idxKey(), idx);
+}
 /* 截图会占本地空间：先按时间清理旧图片，再兜底清全部图片，尽量不让存储爆掉 */
 function saveHistory(){
+  if(!HISTORY.length) return;
+  touchSession();
+  const key = msgKey(CUR_SID);
   let s = JSON.stringify(HISTORY);
-  if(s.length > 2600000){
+  if(s.length > 2200000){
     for(const m of HISTORY){
-      if(m.imgs){ delete m.imgs; s = JSON.stringify(HISTORY); if(s.length < 2600000) break; }
+      if(m.imgs){ delete m.imgs; s = JSON.stringify(HISTORY); if(s.length < 2200000) break; }
     }
   }
-  try{ localStorage.setItem(chatKey(), s); }
+  try{ localStorage.setItem(key, s); }
   catch(e){
     HISTORY.forEach(m => { if(m.imgs) delete m.imgs; });
-    try{ localStorage.setItem(chatKey(), JSON.stringify(HISTORY)); toast('本地空间紧张，旧截图已清理'); }
+    try{ localStorage.setItem(key, JSON.stringify(HISTORY)); toast('本地空间紧张，旧截图已清理'); }
     catch(_){ toast('本地存储已满，清理一下旧对话'); }
   }
 }
+function newSession(){
+  if(HISTORY.length) touchSession();   /* 旧的那段留着，不删 */
+  CUR_SID = null;
+  HISTORY = [];
+  renderHistory();
+  toast('已新开一段，旧对话在「对话记录」里');
+}
+function openSession(sid){
+  CUR_SID = sid;
+  store.set(actKey(), sid);
+  HISTORY = store.get(msgKey(sid), []);
+  renderHistory();
+}
+function delSession(sid){
+  store.del(msgKey(sid));
+  const idx = sessionIndex().filter(s => s.id !== sid);
+  store.set(idxKey(), idx);
+  if(CUR_SID === sid){
+    if(idx.length) openSession(idx[0].id);
+    else { CUR_SID = null; HISTORY = []; renderHistory(); }
+  }
+  renderSessions();
+}
+loadSessions();
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -561,36 +668,58 @@ function scrollBottom(){ requestAnimationFrame(()=>{ chatEl.scrollTop = chatEl.s
 
 function renderHistory(){
   chatEl.innerHTML = '';
+  refreshHeader();          /* 先刷新顶部，避免空对话时胶囊还显示"未选档案" */
   if(!HISTORY.length){ chatEl.appendChild(emptyState()); return; }
   HISTORY.forEach(m => addMsg(m.role, m.content, {noMeta:false, imgs:m.imgs}));
-  refreshHeader();
 }
 function emptyState(){
   const d = document.createElement('div');
   d.className = 'empty';
   const noKey = !S.key;
+  const p = curProfile();
+  const brief = p ? profileBrief(p) : '';
+  const sessCount = sessionIndex().length;
   d.innerHTML = `
     <div class="logo">💬</div>
+    ${p ? `<div class="cur">正在聊：<b>${esc(p.name)}</b>${brief ? `<span>${esc(brief)}</span>` : ''}</div>` : ''}
     <h1>恋爱教练</h1>
-    <p>${noKey ? '还差一步：填入你的 MiniMax Key 就能开始。' : '选个对象档案，或者直接把聊天记录粘下来。'}</p>
+    <p>${noKey ? '还差一步：填入你的 MiniMax Key 就能开始。'
+      : p ? '直接把这段聊天粘下来，它会结合「' + esc(p.name) + '」的档案回答。'
+      : '选个对象档案，或者直接把聊天记录粘下来。'}</p>
     <div class="steps">
       <b>怎么用</b>
       <ol>
-        <li>点顶部胶囊 → 选择或新建对象档案（可选）</li>
+        <li>点顶部胶囊 → 选择或新建对象档案（选了才会结合档案）</li>
         <li>把聊天记录粘进来，或点左下 ＋ 发聊天截图</li>
         <li>拿到的回复可以直接复制发出去</li>
+        <li>顶部 ✎ 是「对话记录」，换新话题也不会覆盖旧的</li>
       </ol>
+      ${sessCount > 1 ? `<div class="tip">这个档案下已有 ${sessCount} 段对话，点右上角 ✎ 可以翻回去。</div>` : ''}
     </div>
     ${noKey ? '<button class="cta" id="goSet">去填 API Key</button>' : ''}
   `;
   d.querySelector('#goSet')?.addEventListener('click', openSettings);
   return d;
 }
+/* 从档案正文里抽出阶段与兴趣度，顶部就不用等 AI 回复也能显示 */
+function profileStage(p){
+  if(!p || !p.content) return '';
+  const m = p.content.match(/当前阶段[^\n:：]{0,8}[:：]\s*\**\s*([^\n*]+)/);
+  return m ? m[1].trim() : '';
+}
+function profileInterest(p){
+  if(!p || !p.content) return '';
+  const m = p.content.match(/兴趣[^\n]{0,6}?约\s*(\d+)\s*成/);
+  return m ? '兴趣约 ' + m[1] + ' 成' : '';
+}
+function profileBrief(p){
+  return [profileStage(p), profileInterest(p)].filter(Boolean).join(' · ');
+}
 function refreshHeader(){
   const p = curProfile();
   $('#pillName').textContent = p ? p.name : '未选档案';
   const lastAi = [...HISTORY].reverse().find(m => m.role === 'assistant');
-  let stage = p ? '已建档' : '点这里选择 / 新建对象';
+  let stage = p ? (profileBrief(p) || '已建档') : '点这里选择 / 新建对象';
   if(lastAi){
     const m = lastAi.content.match(/【([^】]+)】/);
     if(m) stage = m[1];
@@ -817,16 +946,21 @@ function renderProfiles(){
       + '<div class="acts"><button data-a="edit">✎</button><button data-a="del">🗑</button></div>';
     el.querySelector('.info').onclick = () => {
       PROF.active = p.id; store.set('dc.profiles', PROF);
-      HISTORY = store.get(chatKey(), []); renderHistory(); renderProfiles(); closeSheets(); toast('已切换到 ' + p.name);
+      loadSessions(); renderHistory(); renderProfiles(); closeSheets();
+      toast('已切换到 ' + p.name);
     };
     el.querySelector('[data-a="edit"]').onclick = e => { e.stopPropagation(); openEdit(p); };
     el.querySelector('[data-a="del"]').onclick = e => {
       e.stopPropagation();
-      if(!confirm('删除档案「' + p.name + '」？对话也会一起删掉，不可恢复。')) return;
+      if(!confirm('删除档案「' + p.name + '」？它下面的对话记录也会一起删掉，不可恢复。')) return;
+      /* 连带清掉这个档案的所有会话 */
+      Object.keys(localStorage)
+        .filter(k => k === 'dc.sidx.' + p.id || k === 'dc.sact.' + p.id || k.startsWith('dc.s.' + p.id + '.'))
+        .forEach(k => store.del(k));
       PROF.list = PROF.list.filter(x => x.id !== p.id);
       if(PROF.active === p.id) PROF.active = null;
-      store.set('dc.profiles', PROF); store.del('dc.chat.' + p.id);
-      HISTORY = store.get(chatKey(), []); renderProfiles(); renderHistory();
+      store.set('dc.profiles', PROF);
+      loadSessions(); renderProfiles(); renderHistory();
     };
     box.appendChild(el);
   });
@@ -850,7 +984,8 @@ $('#btnSaveP').onclick = () => {
     if(!PROF.active) PROF.active = id;
   }
   store.set('dc.profiles', PROF);
-  renderProfiles(); renderHistory(); refreshHeader(); closeSheets(); toast('已保存');
+  loadSessions();
+  renderProfiles(); renderHistory(); closeSheets(); toast('已保存');
 };
 $('#btnNewP').onclick = () => openEdit(null);
 
@@ -863,8 +998,10 @@ $('#fileIn').onchange = async e => {
     const name = guessName(txt) || f.name.replace(/\.md$/i,'');
     PROF.list.push({ id:'p'+Date.now()+Math.random().toString(36).slice(2,6), name, content:txt, updated:today() });
   }
+  if(!PROF.active && PROF.list.length) PROF.active = PROF.list[0].id;
   store.set('dc.profiles', PROF);
-  renderProfiles(); toast('导入 ' + files.length + ' 个档案');
+  loadSessions();
+  renderProfiles(); renderHistory(); toast('导入 ' + files.length + ' 个档案');
   e.target.value = '';
 };
 $('#btnExportAll').onclick = () => {
@@ -926,8 +1063,14 @@ $('#btnSaveS').onclick = () => {
   if(chatEl.querySelector('.empty')) renderHistory();
 };
 $('#btnClearChat').onclick = () => {
-  if(!confirm('清空当前对话？')) return;
-  HISTORY = []; store.del(chatKey()); renderHistory(); closeSheets(); toast('已清空');
+  if(!confirm('清空当前这段对话？其他对话记录不受影响。')) return;
+  if(CUR_SID){
+    store.del(msgKey(CUR_SID));
+    store.set(idxKey(), sessionIndex().filter(s => s.id !== CUR_SID));
+    CUR_SID = null;
+  }
+  HISTORY = [];
+  renderHistory(); closeSheets(); toast('已清空本段');
 };
 $('#btnResetAll').onclick = () => {
   if(!confirm('重置全部数据（档案 + 对话 + 设置）？不可恢复。')) return;
@@ -950,9 +1093,52 @@ $('#bd').onclick = closeSheets;
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheets);
 $('#pill').onclick = () => { renderProfiles(); openSheet('#sheetP'); };
 $('#btnSet').onclick = openSettings;
-$('#btnNew').onclick = () => {
-  if(HISTORY.length && !confirm('新开一段对话？当前对话会清空。')) return;
-  HISTORY = []; store.del(chatKey()); renderHistory(); toast('已新开对话');
+$('#btnNew').onclick = () => { renderSessions(); openSheet('#sheetC'); };
+
+/* ---------- 对话记录面板 ---------- */
+function renderSessions(){
+  const box = $('#slist');
+  const idx = sessionIndex();
+  const p = curProfile();
+  $('#sessHint').textContent = p
+    ? '档案「' + p.name + '」下的对话，点一条切回去看；「新对话」不会覆盖旧的。'
+    : '当前没选档案，这些对话存在「临时」区。先去顶部胶囊选个档案，之后的对话会分开记。';
+  box.innerHTML = '';
+  if(!idx.length){
+    box.innerHTML = '<div class="field tip">还没有对话记录。直接发第一条消息就会自动建一条。</div>';
+    return;
+  }
+  idx.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'pitem' + (s.id === CUR_SID ? ' on' : '');
+    const d = new Date(s.ts || Date.now());
+    const pad = n => String(n).padStart(2, '0');
+    const stamp = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    el.innerHTML = '<div class="info"><b>' + esc(s.title || '对话') + '</b><small>' + stamp
+      + (s.id === CUR_SID ? ' · 当前' : '') + '</small></div>'
+      + '<div class="acts"><button data-a="del">🗑</button></div>';
+    el.querySelector('.info').onclick = () => {
+      openSession(s.id); renderSessions(); closeSheets(); toast('已切回这段对话');
+    };
+    el.querySelector('[data-a="del"]').onclick = e => {
+      e.stopPropagation();
+      if(!confirm('删除这条对话记录？不可恢复。')) return;
+      delSession(s.id);
+    };
+    box.appendChild(el);
+  });
+}
+$('#btnNewSess').onclick = () => { newSession(); renderSessions(); closeSheets(); };
+$('#btnClearSess').onclick = () => {
+  if(!HISTORY.length && !CUR_SID){ toast('已经是空的了'); return; }
+  if(!confirm('清空当前这段对话？其他对话记录不受影响。')) return;
+  if(CUR_SID){
+    store.del(msgKey(CUR_SID));
+    store.set(idxKey(), sessionIndex().filter(s => s.id !== CUR_SID));
+    CUR_SID = null;
+  }
+  HISTORY = [];
+  renderHistory(); renderSessions(); toast('已清空本段');
 };
 
 /* ---------- 输入 ---------- */
