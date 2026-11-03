@@ -1,4 +1,4 @@
-const CACHE = 'dating-coach-c572206c';
+const CACHE = 'dating-coach-b13ebc8d';
 const ASSETS = [
   './',
   './index.html',

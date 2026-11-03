@@ -128,6 +128,7 @@ footer{
 #send:disabled{opacity:.45}
 #send.stop{background:#3a2028;color:var(--acc2);border:1px solid rgba(240,104,143,.4)}
 .hint{font-size:10.5px;color:var(--tx3);text-align:center;margin:6px 0 0}
+.hint.on{color:var(--acc)}
 
 /* empty state */
 .empty{margin:auto;max-width:340px;text-align:center;padding:20px 6px;display:flex;flex-direction:column;gap:14px}
@@ -268,10 +269,10 @@ footer{
   <div class="attach" id="attach"></div>
   <div class="composer">
     <button class="abtn" id="btnImg" title="发截图">＋</button>
-    <textarea id="input" rows="1" placeholder="粘贴聊天记录或截图…"></textarea>
+    <textarea id="input" rows="1" placeholder="打字，或加截图，可以一起发…"></textarea>
     <button id="send">发送</button>
   </div>
-  <div class="hint">建议先选对象档案；截图会按图片理解，直接发聊天截图最省事</div>
+  <div class="hint" id="hint">建议先选对象档案；截图会按图片理解，直接发聊天截图最省事</div>
 </footer>
 
 <div class="backdrop" id="bd"></div>
@@ -792,8 +793,14 @@ async function ask(text, pics){
       ? ((m.content ? m.content + '\n' : '') + '（附图 ' + m.imgs.length + ' 张，此处省略）')
       : (m.content || '')
   }));
+  /* 图文一起发时，明确告诉模型"图和文字都要看"，避免它只描述图片 */
+  const txtForApi = pics.length
+    ? (text
+        ? '【附聊天截图 ' + pics.length + ' 张，请结合图片和下面这段文字一起回答】\n' + text
+        : '请分析这 ' + pics.length + ' 张聊天截图：先逐条读出双方的发言与语气，再按「定位 / 信号解读 / 我的问题 / 建议回复 / 下一步」给结论。')
+    : text;
   const cur = pics.length
-    ? { role:'user', content: [{ type:'text', text: text || '请分析这几张聊天截图。' }]
+    ? { role:'user', content: [{ type:'text', text: txtForApi }]
         .concat(pics.map(u => ({ type:'image_url', image_url:{ url:u } }))) }
     : { role:'user', content: text };
   const msgs = [{ role:'system', content: systemPrompt() }].concat(hist).concat([cur]);
@@ -1151,22 +1158,31 @@ input.addEventListener('keydown', e => {
   if(e.key === 'Enter' && !e.shiftKey && window.innerWidth > 700){ e.preventDefault(); sendBtn.click(); }
 });
 /* ---------- 图片附件 ---------- */
+const MAX_N = 6;                       /* 一次最多几张 */
+const MAX_FILE = 10 * 1024 * 1024;     /* 单张原图上限 10MB */
+const MAX_B64 = 900 * 1024;            /* 单张压缩后上限（base64 字符数）*/
+const MAX_TOTAL = 3.6 * 1024 * 1024;   /* 一次发送的总上限 */
+
 let pending = [];
-const attachEl = $('#attach'), imgIn = $('#imgIn');
-function shrink(file){
+const attachEl = $('#attach'), imgIn = $('#imgIn'), hintEl = $('#hint');
+const totalSize = () => pending.reduce((n, u) => n + u.length, 0);
+
+function encode(file, max, q){
   return new Promise(resolve => {
     const fr = new FileReader();
     fr.onload = () => {
       const im = new Image();
       im.onload = () => {
-        const max = 1000;
         const k = Math.min(1, max / Math.max(im.width, im.height));
         const w = Math.max(1, Math.round(im.width * k));
         const h = Math.max(1, Math.round(im.height * k));
         const cv = document.createElement('canvas');
         cv.width = w; cv.height = h;
-        cv.getContext('2d').drawImage(im, 0, 0, w, h);
-        resolve(cv.toDataURL('image/jpeg', 0.72));
+        const ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff';                 /* 透明 PNG 转 JPEG 不会变黑 */
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(im, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', q));
       };
       im.onerror = () => resolve(null);
       im.src = fr.result;
@@ -1174,6 +1190,13 @@ function shrink(file){
     fr.onerror = () => resolve(null);
     fr.readAsDataURL(file);
   });
+}
+/* 聊天截图的字比较小，先保清晰度，太大再逐级降 */
+async function shrink(file){
+  let u = await encode(file, 1400, 0.82);
+  if(u && u.length > MAX_B64) u = await encode(file, 1200, 0.62);
+  if(u && u.length > MAX_B64) u = await encode(file, 1000, 0.5);
+  return u;
 }
 function renderAttach(){
   attachEl.innerHTML = '';
@@ -1188,19 +1211,32 @@ function renderAttach(){
     attachEl.appendChild(d);
   });
   attachEl.classList.toggle('on', pending.length > 0);
+  if(hintEl){
+    hintEl.textContent = pending.length
+      ? '已选 ' + pending.length + '/' + MAX_N + ' 张 · 可以再打一段文字一起发'
+      : '建议先选对象档案；截图会按图片理解，直接发聊天截图最省事';
+    hintEl.classList.toggle('on', pending.length > 0);
+  }
 }
 $('#btnImg').onclick = () => imgIn.click();
 imgIn.onchange = async e => {
   const files = [...e.target.files];
   imgIn.value = '';
+  if(!files.length) return;
+  let tooBig = 0;
   for(const f of files){
-    if(!f.type.startsWith('image/')) continue;
+    if(pending.length >= MAX_N){ toast('一次最多 ' + MAX_N + ' 张'); break; }
+    if(!f.type || !f.type.startsWith('image/')) continue;
+    if(f.size > MAX_FILE){ tooBig++; continue; }
     const u = await shrink(f);
-    if(u) pending.push(u);
+    if(!u) continue;
+    if(totalSize() + u.length > MAX_TOTAL){ toast('这批图偏大，先发这些'); break; }
+    pending.push(u);
   }
-  if(pending.length > 6){ pending = pending.slice(0, 6); toast('一次最多 6 张'); }
+  if(tooBig) toast(tooBig + ' 张超过 10MB，已跳过');
   renderAttach();
   autosize();
+  input.focus();
 };
 
 sendBtn.onclick = () => {
