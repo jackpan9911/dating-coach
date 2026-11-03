@@ -225,6 +225,22 @@ footer{
 .dots::after{content:"···";animation:blink 1.2s infinite}
 @keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
 .hidden{display:none!important}
+/* 图片附件 */
+.attach{display:none;gap:8px;padding:0 12px 8px;overflow-x:auto}
+.attach.on{display:flex}
+.attach .th{position:relative;flex:0 0 auto}
+.attach .th img{width:60px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block}
+.attach .th button{
+  position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;
+  background:rgba(18,20,26,.95);color:#fff;font-size:11px;display:grid;place-items:center;
+  border:1px solid var(--line);
+}
+.abtn{
+  flex:0 0 auto;width:38px;height:38px;border-radius:12px;background:var(--card);
+  border:1px solid var(--line);color:var(--tx2);font-size:20px;line-height:1;
+  display:grid;place-items:center;align-self:flex-end;
+}
+.msg.user .bub img{max-width:148px;max-height:200px;border-radius:10px;display:block;margin:0 0 6px}
 </style>
 </head>
 <body>
@@ -242,11 +258,13 @@ footer{
 <main id="chat"></main>
 
 <footer>
+  <div class="attach" id="attach"></div>
   <div class="composer">
-    <textarea id="input" rows="1" placeholder="粘贴聊天记录，或直接问…"></textarea>
+    <button class="abtn" id="btnImg" title="发截图">＋</button>
+    <textarea id="input" rows="1" placeholder="粘贴聊天记录或截图…"></textarea>
     <button id="send">发送</button>
   </div>
-  <div class="hint">建议先选对象档案；纯知识问答可直接问</div>
+  <div class="hint">建议先选对象档案；截图会按图片理解，直接发聊天截图最省事</div>
 </footer>
 
 <div class="backdrop" id="bd"></div>
@@ -348,6 +366,7 @@ footer{
 
 <div class="toast" id="toast"></div>
 <input type="file" id="fileIn" accept=".md,text/markdown,text/plain" multiple class="hidden">
+<input type="file" id="imgIn" accept="image/*" multiple class="hidden">
 
 <script>
 const KB = __KNOWLEDGE_JSON__;
@@ -386,6 +405,21 @@ if(!PROF || !Array.isArray(PROF.list)) PROF = { list:[], active:null };
 const curProfile = () => PROF.list.find(p => p.id === PROF.active) || null;
 const chatKey = () => 'dc.chat.' + (PROF.active || 'none');
 let HISTORY = store.get(chatKey(), []);
+/* 截图会占本地空间：先按时间清理旧图片，再兜底清全部图片，尽量不让存储爆掉 */
+function saveHistory(){
+  let s = JSON.stringify(HISTORY);
+  if(s.length > 2600000){
+    for(const m of HISTORY){
+      if(m.imgs){ delete m.imgs; s = JSON.stringify(HISTORY); if(s.length < 2600000) break; }
+    }
+  }
+  try{ localStorage.setItem(chatKey(), s); }
+  catch(e){
+    HISTORY.forEach(m => { if(m.imgs) delete m.imgs; });
+    try{ localStorage.setItem(chatKey(), JSON.stringify(HISTORY)); toast('本地空间紧张，旧截图已清理'); }
+    catch(_){ toast('本地存储已满，清理一下旧对话'); }
+  }
+}
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -498,11 +532,15 @@ function bubbleHtml(text){
   return head + renderMd(text);
 }
 function addMsg(role, text, opts){
+  opts = opts || {};
   const wrap = document.createElement('div');
   wrap.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
   const bub = document.createElement('div');
   bub.className = 'bub';
-  bub.innerHTML = role === 'user' ? inlineMd(text).replace(/\n/g,'<br>') : bubbleHtml(text);
+  bub.innerHTML = role === 'user' ? inlineMd(text || '').replace(/\n/g,'<br>') : bubbleHtml(text || '');
+  if(opts.imgs && opts.imgs.length){
+    bub.innerHTML = opts.imgs.map(u => '<img src="' + u + '" alt="截图">').join('') + bub.innerHTML;
+  }
   const meta = document.createElement('div');
   meta.className = 'meta';
   if(role === 'ai' && !(opts && opts.streaming)){
@@ -524,7 +562,7 @@ function scrollBottom(){ requestAnimationFrame(()=>{ chatEl.scrollTop = chatEl.s
 function renderHistory(){
   chatEl.innerHTML = '';
   if(!HISTORY.length){ chatEl.appendChild(emptyState()); return; }
-  HISTORY.forEach(m => addMsg(m.role, m.content, {noMeta:false}));
+  HISTORY.forEach(m => addMsg(m.role, m.content, {noMeta:false, imgs:m.imgs}));
   refreshHeader();
 }
 function emptyState(){
@@ -539,7 +577,7 @@ function emptyState(){
       <b>怎么用</b>
       <ol>
         <li>点顶部胶囊 → 选择或新建对象档案（可选）</li>
-        <li>把聊天记录整段粘贴进输入框</li>
+        <li>把聊天记录粘进来，或点左下 ＋ 发聊天截图</li>
         <li>拿到的回复可以直接复制发出去</li>
       </ol>
     </div>
@@ -580,6 +618,7 @@ function systemPrompt(){
   let s = skillText();
   s += '\n\n---\n\n# 运行环境（重要）\n';
   s += '你正在用户手机上的一个 App 里运行，没有文件系统，不能读写 `profiles/` 目录。\n';
+  s += '- 用户可能直接发聊天截图：先看图逐条读出发言、时间、语气，再按流程分析；看不清就说看不清，不要编。\n';
   s += '- 需要输出或更新对象档案时，用 ```profile 代码块包裹**完整**的档案 Markdown（第一行 `# 情况记录：<代号>`），App 会提供"存为档案"按钮让用户一键保存。\n';
   s += '- 除了这种情况下，不要重复输出整块档案；日常只靠开头那行阶段标签体现进度。\n';
   s += '- 今天是 ' + today() + '。\n';
@@ -595,16 +634,19 @@ function systemPrompt(){
 
 /* ---------- 请求 ---------- */
 let busy = false, ctrl = null;
-async function ask(text){
+async function ask(text, pics){
+  pics = pics || [];
   if(!S.key){ toast('先在设置里填 API Key'); openSettings(); return; }
   busy = true;
   sendBtn.textContent = '停止'; sendBtn.classList.add('stop');
   input.value = ''; autosize();
 
-  HISTORY.push({ role:'user', content:text });
-  store.set(chatKey(), HISTORY);
+  const entry = { role:'user', content:text || '' };
+  if(pics.length) entry.imgs = pics;
+  HISTORY.push(entry);
+  saveHistory();
   if(chatEl.querySelector('.empty')) chatEl.innerHTML = '';
-  addMsg('user', text);
+  addMsg('user', text, { imgs:pics });
 
   const node = addMsg('ai', '', { streaming:true, noMeta:true });
   node.bub.innerHTML = '<p class="dots">思考中</p>';
@@ -615,9 +657,17 @@ async function ask(text){
     scrollBottom();
   };
 
-  const msgs = [{ role:'system', content: systemPrompt() }]
-    .concat(HISTORY.slice(0, -1).slice(-24))
-    .concat([{ role:'user', content:text }]);
+  const hist = HISTORY.slice(0, -1).slice(-24).map(m => ({
+    role: m.role,
+    content: (m.imgs && m.imgs.length)
+      ? ((m.content ? m.content + '\n' : '') + '（附图 ' + m.imgs.length + ' 张，此处省略）')
+      : (m.content || '')
+  }));
+  const cur = pics.length
+    ? { role:'user', content: [{ type:'text', text: text || '请分析这几张聊天截图。' }]
+        .concat(pics.map(u => ({ type:'image_url', image_url:{ url:u } }))) }
+    : { role:'user', content: text };
+  const msgs = [{ role:'system', content: systemPrompt() }].concat(hist).concat([cur]);
 
   try{
     ctrl = new AbortController();
@@ -674,7 +724,7 @@ async function ask(text){
     node.bub.innerHTML = bubbleHtml(acc);
     node.wrap.appendChild(makeMeta(node.bub));
     HISTORY.push({ role:'assistant', content:acc });
-    store.set(chatKey(), HISTORY);
+    saveHistory();
     refreshHeader();
     // 检测 profile 代码块
     if(/```profile/.test(acc)) showSaveProfileBar(acc);
@@ -686,7 +736,7 @@ async function ask(text){
         node.bub.innerHTML = bubbleHtml(acc);
         node.wrap.appendChild(makeMeta(node.bub));
         HISTORY.push({ role:'assistant', content:acc });
-        store.set(chatKey(), HISTORY);
+        saveHistory();
       } else { node.wrap.remove(); }
       toast('已停止');
     } else {
@@ -914,11 +964,66 @@ input.addEventListener('input', autosize);
 input.addEventListener('keydown', e => {
   if(e.key === 'Enter' && !e.shiftKey && window.innerWidth > 700){ e.preventDefault(); sendBtn.click(); }
 });
+/* ---------- 图片附件 ---------- */
+let pending = [];
+const attachEl = $('#attach'), imgIn = $('#imgIn');
+function shrink(file){
+  return new Promise(resolve => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        const max = 1000;
+        const k = Math.min(1, max / Math.max(im.width, im.height));
+        const w = Math.max(1, Math.round(im.width * k));
+        const h = Math.max(1, Math.round(im.height * k));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(im, 0, 0, w, h);
+        resolve(cv.toDataURL('image/jpeg', 0.72));
+      };
+      im.onerror = () => resolve(null);
+      im.src = fr.result;
+    };
+    fr.onerror = () => resolve(null);
+    fr.readAsDataURL(file);
+  });
+}
+function renderAttach(){
+  attachEl.innerHTML = '';
+  pending.forEach((u, i) => {
+    const d = document.createElement('div');
+    d.className = 'th';
+    d.innerHTML = '<img src="' + u + '" alt="截图">';
+    const x = document.createElement('button');
+    x.textContent = '✕';
+    x.onclick = () => { pending.splice(i, 1); renderAttach(); };
+    d.appendChild(x);
+    attachEl.appendChild(d);
+  });
+  attachEl.classList.toggle('on', pending.length > 0);
+}
+$('#btnImg').onclick = () => imgIn.click();
+imgIn.onchange = async e => {
+  const files = [...e.target.files];
+  imgIn.value = '';
+  for(const f of files){
+    if(!f.type.startsWith('image/')) continue;
+    const u = await shrink(f);
+    if(u) pending.push(u);
+  }
+  if(pending.length > 6){ pending = pending.slice(0, 6); toast('一次最多 6 张'); }
+  renderAttach();
+  autosize();
+};
+
 sendBtn.onclick = () => {
   if(busy){ ctrl?.abort(); return; }
   const t = input.value.trim();
-  if(!t) return;
-  ask(t);
+  const pics = pending.slice();
+  if(!t && !pics.length) return;
+  pending = []; renderAttach();
+  ask(t, pics);
 };
 
 /* ---------- 启动 ---------- */

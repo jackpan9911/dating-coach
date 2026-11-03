@@ -96,6 +96,66 @@ def png(path: Path, size: int) -> None:
     )
 
 
+def icon(path: Path, size: int) -> None:
+    """优先用 Pillow 画：暗紫底 + 白色对话气泡 + 玫红爱心；没有 Pillow 就退回纯 python 版本。"""
+    try:
+        import math
+
+        from PIL import Image, ImageDraw, ImageFilter
+    except ImportError:
+        png(path, size)
+        return
+
+    S = size * 4
+    img = Image.new("RGB", (S, S))
+    d = ImageDraw.Draw(img)
+    top, bot = (48, 28, 52), (13, 10, 16)
+    for y in range(S):
+        t = y / (S - 1)
+        d.line(
+            [(0, y), (S, y)],
+            fill=tuple(round(top[i] + (bot[i] - top[i]) * t) for i in range(3)),
+        )
+
+    # 背后一团柔光，让气泡有浮起感
+    glow = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(glow).ellipse(
+        [S * 0.10, S * 0.04, S * 0.90, S * 0.84], fill=70
+    )
+    glow = glow.filter(ImageFilter.GaussianBlur(S * 0.13))
+    img = Image.composite(Image.new("RGB", (S, S), (255, 92, 132)), img, glow)
+
+    d = ImageDraw.Draw(img)
+
+    # 对话气泡
+    bx0, by0, bx1, by1 = S * 0.15, S * 0.24, S * 0.85, S * 0.70
+    r = (bx1 - bx0) * 0.26
+    d.rounded_rectangle([bx0, by0, bx1, by1], radius=r, fill=(255, 255, 255))
+    tail_w = (bx1 - bx0) * 0.16
+    d.polygon(
+        [
+            (bx0 + tail_w * 0.85, by1 - S * 0.02),
+            (bx0 + tail_w * 1.30, by1 + S * 0.115),
+            (bx0 + tail_w * 2.75, by1 - S * 0.02),
+        ],
+        fill=(255, 255, 255),
+    )
+
+    # 心形（参数方程）
+    cx = (bx0 + bx1) / 2
+    cy = (by0 + by1) / 2 + (by1 - by0) * 0.02
+    hs = (bx1 - bx0) * 0.15
+    pts = []
+    for i in range(240):
+        t = i / 240 * 2 * math.pi
+        hx = 16 * math.sin(t) ** 3
+        hy = 13 * math.cos(t) - 5 * math.cos(2 * t) - 2 * math.cos(3 * t) - math.cos(4 * t)
+        pts.append((cx + hx * hs / 16, cy - hy * hs / 16))
+    d.polygon(pts, fill=(255, 74, 116))
+
+    img.resize((size, size), Image.LANCZOS).save(path)
+
+
 def main() -> None:
     skill = read(SKILL_DIR / "SKILL.md")
     refs = []
@@ -133,9 +193,9 @@ def main() -> None:
     )
     (OUT / "sw.js").write_text(sw, encoding="utf-8")
     shutil.copy2(HERE / "manifest.webmanifest", OUT / "manifest.webmanifest")
-    png(OUT / "icon-192.png", 192)
-    png(OUT / "icon-512.png", 512)
-    png(OUT / "apple-touch-icon.png", 180)
+    icon(OUT / "icon-192.png", 192)
+    icon(OUT / "icon-512.png", 512)
+    icon(OUT / "apple-touch-icon.png", 180)
 
     kb = len(skill) + sum(r["chars"] for r in refs)
     print(f"已输出 {OUT}")
