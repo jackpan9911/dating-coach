@@ -1,0 +1,112 @@
+# 手机端 App（PWA）
+
+把 `dating-coach` 技能打成**一个静态网页**，用 iPhone Safari「添加到主屏幕」后就是一个全屏 App：
+聊天、贴聊天记录、给每个对象建档、跨天保存进度。
+
+- 不需要服务器：页面是纯静态文件，MiniMax 接口允许浏览器直连（已实测 CORS 通过）。
+- 不需要装 App Store 应用：Safari 打开 → 分享 → 添加到主屏幕。
+- 数据全在本机浏览器（localStorage）：API Key、对象档案、聊天记录都不会离开这台手机，除了发给 MiniMax 的那次请求。
+
+## 一、构建
+
+技能内容会被打进 `index.html`，改了 `.claude/skills/dating-coach/` 里的 md 就要重新构建：
+
+```bash
+python mobile/build.py
+```
+
+输出到 `docs/`：
+
+| 文件 | 说明 |
+|---|---|
+| `index.html` | 单文件应用（内嵌 SKILL.md + 选中的 references，约 150 KB） |
+| `manifest.webmanifest` | PWA 声明（全屏、图标、主题色） |
+| `sw.js` | 离线缓存外壳，断网也能打开界面 |
+| `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` | 由脚本程序化生成的图标 |
+
+`mobile/template.html` 是界面本体，`mobile/build.py` 只做「读 md → 填占位符 → 出图」的事。
+
+## 二、部署到 GitHub Pages
+
+```bash
+git add docs mobile
+git commit -m "feat: 手机端 PWA"
+git push
+```
+
+然后仓库 **Settings → Pages**：
+
+- Source 选 `Deploy from a branch`
+- Branch 选 `main`，目录选 **`/docs`**
+- 保存，等一两分钟
+
+访问地址形如 `https://<你的用户名>.github.io/<仓库名>/`。
+
+> GitHub Pages 的分支部署只支持根目录或 `/docs`，所以产物固定输出到 `docs/`。
+> 不想公开就用私有仓库 + Cloudflare Pages（同样指向上面的 `docs` 目录），或任意静态托管。
+
+## 三、iPhone 上的安装
+
+1. Safari 打开上面那个地址（**必须 Safari**，微信/Chrome 内侧不能加桌面）。
+2. 点底部「分享」→ 往下找 **「添加到主屏幕」** → 命名「教练」→ 添加。
+3. 从桌面图标进入，首次会弹设置面板，填 MiniMax Key。
+
+填 Key 的地方：
+
+| 项 | 值 |
+|---|---|
+| 接口地址 | `https://api.minimaxi.com/v1`（国内 Key）；海外用 `https://api.minimax.io/v1` |
+| 模型 | `MiniMax-M3`（默认，100 万上下文）；想省钱可换 `MiniMax-M2` |
+| 温度 | 0.8 左右，想更稳就 0.6 |
+
+### 免手输：一键配置链接
+
+不想在手机上长按输入 Key，可以用地址片段直接灌进去（`#` 之后的内容不会发给服务器，也不进访问日志）：
+
+```
+https://<你的域名>/#k=<API_KEY>&m=MiniMax-M3
+```
+
+打开后 Key 自动写进本机 localStorage，地址栏里的片段会立刻被清掉。**建议先在 Safari 里打开这条链接，再「添加到主屏幕」**，这样桌面图标共用同一份数据。
+
+注意别把带 `#k=` 的链接发到公开群或提进仓库。
+
+## 四、日常用法
+
+- **贴聊天记录**：直接把截图里的文字或聊天原文整段粘进输入框，它会按「定位 → 信号解读 → 你的问题 → 建议回复 → 下一步」输出，回复可以直接复制。
+- **对象档案**：顶部胶囊 → 新建/选择档案。选中后每次提问都会自动带上这个人的档案，AI 就不会把人和人搞混。
+- **存档案**：AI 判断局势有更新时，会在回复里输出一个 `profile` 代码块，页面底部出现「存为 X」，点一下就写进档案，不用手动复制。
+- **换语气**：设置里「教练 / 狠 / 暖」三档，对应技能里的三种语气模式。
+- **知识库开关**：默认只带「聊天分析 + 档案模板 + 信号识别」（约 1.7 万字，每轮几分钱）；问约会安排、穿搭、见家长之类，去设置里把对应资料也勾上会更准。
+
+## 五、和桌面端的关系
+
+两边共用同一套 `profiles/*.md`：
+
+- 电脑上写好的档案 → 手机「档案 → 导入 .md」带过来；
+- 手机上更新过的 → 「导出全部」存成 md，放回仓库 `profiles/`；
+- 桌面端仍是 CodeBuddy / Claude Code 读写文件那一套，互不干扰。
+
+`profiles/` 已在 `.gitignore` 里，别把私人档案推到公开仓库；`docs/` 只是应用本体，可以公开。
+
+## 六、改界面
+
+改 `mobile/template.html` → `python mobile/build.py` → 刷新页面。
+
+本地预览（不装任何东西）：
+
+```bash
+cd docs && python -m http.server 8765
+```
+
+浏览器开 `http://127.0.0.1:8765/`，F12 切设备模拟看手机效果。
+
+## 七、常见问题
+
+**填了 Key 还是报错？** 依次查：Key 是否有多余空格；模型名是否在你的账号权限内；接口地址是 `.com` 还是 `.io`；账户余额。
+
+**Key 放浏览器里安全吗？** 只存在你这台设备的 localStorage，不会同步到任何第三方；但手机丢失或被别人拿到浏览器就等于拿到 Key。介意的话去 MiniMax 后台限制额度、定期轮换。
+
+**换手机 / 清浏览器数据会丢档案吗？** 会。所以重要档案记得定期「导出全部」存到文件或仓库里。
+
+**为什么没有服务端？** 因为 MiniMax 允许浏览器跨域调用。如果哪天它收紧了，或者你想把 Key 藏起来，可以加一个几十行的 Cloudflare Worker 做转发，把「接口地址」改成 Worker 地址即可，前端不用改。
